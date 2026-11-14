@@ -50,7 +50,6 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ElInput } from 'element-plus'
-import bus from '@/bus'
 
 const { t } = useI18n()
 
@@ -181,14 +180,18 @@ const onDocumentKeyDown = (event: KeyboardEvent): void => {
   }
 }
 
+// Listen to the IPC channel directly: going through a shared bus added a second
+// hop that could silently drop the request.
+let stopIpcListener: (() => void) | null = null
+
 onMounted(() => {
-  bus.on('insertTag', open)
+  stopIpcListener = window.electron.ipcRenderer.on('mt::cm-insert-tag', () => open())
   document.addEventListener('contextmenu', onDocumentContextMenu, true)
   document.addEventListener('keydown', onDocumentKeyDown, true)
 })
 
 onUnmounted(() => {
-  bus.off('insertTag', open)
+  stopIpcListener?.()
   document.removeEventListener('contextmenu', onDocumentContextMenu, true)
   document.removeEventListener('keydown', onDocumentKeyDown, true)
 })

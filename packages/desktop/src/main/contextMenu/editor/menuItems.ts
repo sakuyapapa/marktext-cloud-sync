@@ -1,5 +1,6 @@
 
-import { type BaseWindow, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
+import { BrowserWindow, type BaseWindow, type MenuItemConstructorOptions } from 'electron'
+import log from 'electron-log'
 import { t } from '../../i18n'
 
 // Use function form to avoid calling the translation function during module load
@@ -109,13 +110,15 @@ export const getInsertAfter = (): MenuItemConstructorOptions => ({
 })
 
 // Inline `#tag` insertion: the renderer owns the selection, so the menu only
-// asks it to open the tag popover at the caret.
+// asks it to open the tag popover near the caret. Broadcast instead of relying
+// on the menu's `targetWindow`, which is not always populated for popup menus.
 export const getInsertTag = (): MenuItemConstructorOptions => ({
   label: t('contextMenu.insertTag'),
   id: 'insertTagMenuItem',
-  click(_menuItem, targetWindow) {
-    if (targetWindow) {
-      ;(targetWindow as BrowserWindow).webContents.send('mt::cm-insert-tag')
+  click() {
+    log.info('[tag] insert-tag requested from the paragraph menu')
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) window.webContents.send('mt::cm-insert-tag')
     }
   }
 })
