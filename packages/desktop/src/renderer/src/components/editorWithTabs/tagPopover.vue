@@ -1,53 +1,51 @@
 <template>
-  <Teleport to="body">
+  <div>
     <div
       v-if="visible"
-      class="tag-popover-layer"
+      class="mt-tag-backdrop"
+      :style="backdropStyle"
       @mousedown.self.prevent="onBackdropMouseDown"
+    />
+    <div
+      v-if="visible"
+      ref="card"
+      class="mt-tag-card"
+      :style="cardStyle"
     >
-      <div
-        ref="card"
-        class="tag-popover"
-        :style="positionStyle"
-        @mousedown.stop
-        @keydown.esc.stop.prevent="close"
-      >
-        <div class="tag-popover__title">
-          {{ t('tagPopover.title') }}
-        </div>
-        <el-input
-          ref="inputRef"
-          v-model="draft"
+      <div :style="titleStyle">
+        {{ t('tagPopover.title') }}
+      </div>
+      <el-input
+        ref="inputRef"
+        v-model="draft"
+        size="small"
+        :placeholder="t('tagPopover.placeholder')"
+        @keydown.enter.prevent="confirm"
+      />
+      <div :style="hintStyle">
+        {{ t('tagPopover.hint') }}
+      </div>
+      <div :style="actionsStyle">
+        <el-button
           size="small"
-          class="tag-popover__input"
-          :placeholder="t('tagPopover.placeholder')"
-          @keydown.enter.prevent="confirm"
-        />
-        <div class="tag-popover__hint">
-          {{ t('tagPopover.hint') }}
-        </div>
-        <div class="tag-popover__actions">
-          <el-button
-            size="small"
-            @click="close"
-          >
-            {{ t('tagPopover.cancel') }}
-          </el-button>
-          <el-button
-            size="small"
-            type="primary"
-            @click="confirm"
-          >
-            {{ t('tagPopover.confirm') }}
-          </el-button>
-        </div>
+          @click="close"
+        >
+          {{ t('tagPopover.cancel') }}
+        </el-button>
+        <el-button
+          size="small"
+          type="primary"
+          @click="confirm"
+        >
+          {{ t('tagPopover.confirm') }}
+        </el-button>
       </div>
     </div>
-  </Teleport>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ElInput } from 'element-plus'
 
@@ -67,10 +65,40 @@ let savedEditor: HTMLElement | null = null
 let savedRange: Range | null = null
 let openedAt = 0
 
-const positionStyle = computed(() => ({
+const report = (message: string): void => {
+  try {
+    window.electron.ipcRenderer.send('mt::tag::log', message)
+  } catch {
+    // Diagnostics must never break the feature.
+  }
+}
+
+// Inline styles on purpose: the card must render even if the theme custom
+// properties are unavailable in this window.
+const cardStyle = computed(() => ({
+  position: 'fixed' as const,
   left: `${anchor.value.x}px`,
-  top: `${anchor.value.y}px`
+  top: `${anchor.value.y}px`,
+  width: '320px',
+  padding: '12px',
+  boxSizing: 'border-box' as const,
+  borderRadius: '8px',
+  border: '2px solid #21b56f',
+  background: '#ffffff',
+  color: '#333333',
+  boxShadow: '0 8px 28px rgba(0, 0, 0, 0.28)',
+  zIndex: 2147483647
 }))
+
+const backdropStyle = {
+  position: 'fixed' as const,
+  inset: 0,
+  zIndex: 2147483646
+}
+
+const titleStyle = { fontSize: '13px', fontWeight: 600, marginBottom: '8px' }
+const hintStyle = { marginTop: '6px', fontSize: '12px', lineHeight: 1.4, color: '#888888' }
+const actionsStyle = { display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '10px' }
 
 const editorFromNode = (node: Node | null): HTMLElement | null => {
   if (!node) return null
@@ -82,13 +110,12 @@ const captureCaret = (): void => {
   try {
     const selection = window.getSelection()
     const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null
-    const editor = editorFromNode(range?.startContainer ?? null) ??
-      editorFromNode(document.activeElement)
+    const editor =
+      editorFromNode(range?.startContainer ?? null) ?? editorFromNode(document.activeElement)
     if (editor) savedEditor = editor
     if (range) savedRange = range
   } catch {
-    // A contextmenu on a detached node can make getRangeAt throw; keep the
-    // previously captured caret instead.
+    // Keep the previously captured caret when the selection is detached.
   }
 }
 
@@ -104,8 +131,8 @@ const open = (): void => {
       rect = null
     }
 
-    const width = 300
-    const height = 160
+    const width = 320
+    const height = 170
     const x = Math.max(8, Math.min(rect?.left ?? 24, window.innerWidth - width - 8))
     const y = rect
       ? rect.bottom + height > window.innerHeight
@@ -115,11 +142,27 @@ const open = (): void => {
     anchor.value = { x, y }
     draft.value = ''
     visible.value = true
-    window.electron.ipcRenderer.send('mt::tag::opened')
-    requestAnimationFrame(() => inputRef.value?.focus())
+    report('popover opened in renderer')
+
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        const element = card.value
+        if (!element) {
+          report('card element missing after nextTick')
+          return
+        }
+        const box = element.getBoundingClientRect()
+        const style = window.getComputedStyle(element)
+        report(
+          `card rect=${Math.round(box.x)},${Math.round(box.y)} ${Math.round(box.width)}x${Math.round(box.height)} ` +
+            `viewport=${window.innerWidth}x${window.innerHeight} display=${style.display} ` +
+            `visibility=${style.visibility} opacity=${style.opacity} zIndex=${style.zIndex}`
+        )
+        inputRef.value?.focus()
+      })
+    })
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    window.electron.ipcRenderer.send('mt::tag::log', `open failed: ${message}`)
+    report(`open failed: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
@@ -135,7 +178,7 @@ const restoreCaret = (): void => {
     selection.removeAllRanges()
     selection.addRange(range)
   } catch {
-    // Range became invalid (block re-rendered); fall back to the editor's caret.
+    // Range became invalid (block re-rendered); fall back to the editor caret.
   }
 }
 
@@ -154,19 +197,15 @@ const confirm = (): void => {
   restoreCaret()
   if (!payload) return
   try {
-    // Muya handles the resulting `input` event, so inline formatting, the undo
-    // stack and the markdown state all stay consistent with typed text.
     const inserted = document.execCommand('insertText', false, `${payload} `)
-    if (!inserted) console.warn('[tag] insertText was rejected by the renderer')
+    report(`insert ${inserted ? 'ok' : 'rejected'}: ${payload}`)
   } catch (error) {
-    console.warn('[tag] failed to insert tag text', error)
+    report(`insert failed: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
 const close = (): void => {
   if (!visible.value) return
-  // The click that dismissed the native context menu can be delivered to the
-  // page right after the IPC message; ignoring it here keeps the card open.
   if (Date.now() - openedAt < 300) return
   visible.value = false
   restoreCaret()
@@ -192,15 +231,13 @@ const onDocumentKeyDown = (event: KeyboardEvent): void => {
   }
 }
 
-// Listen to the IPC channel directly: going through a shared bus added a second
-// hop that could silently drop the request.
 let stopIpcListener: (() => void) | null = null
 
 onMounted(() => {
   stopIpcListener = window.electron.ipcRenderer.on('mt::cm-insert-tag', () => open())
   document.addEventListener('contextmenu', onDocumentContextMenu, true)
   document.addEventListener('keydown', onDocumentKeyDown, true)
-  window.electron.ipcRenderer.send('mt::tag::log', 'popover component mounted')
+  report('popover component mounted')
 })
 
 onUnmounted(() => {
@@ -209,47 +246,3 @@ onUnmounted(() => {
   document.removeEventListener('keydown', onDocumentKeyDown, true)
 })
 </script>
-
-<style scoped>
-.tag-popover-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-}
-
-.tag-popover {
-  position: absolute;
-  width: 300px;
-  padding: 12px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  border: 1px solid var(--floatBorderColor);
-  background: var(--floatBgColor);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
-  color: var(--editorColor);
-}
-
-.tag-popover__title {
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.tag-popover__input {
-  width: 100%;
-}
-
-.tag-popover__hint {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--editorColor50);
-  line-height: 1.4;
-}
-
-.tag-popover__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 10px;
-}
-</style>
