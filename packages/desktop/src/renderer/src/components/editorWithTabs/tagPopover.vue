@@ -119,26 +119,41 @@ const captureCaret = (): void => {
   }
 }
 
+// Position captured while the DOM is still live: the native menu and Muya's
+// re-render can invalidate the range, in which case the range rect collapses to
+// 0,0 and the card would land in the window corner.
+let lastAnchor: { x: number; y: number } | null = null
+
+const rememberAnchor = (pointerX?: number, pointerY?: number): void => {
+  let rect: DOMRect | null = null
+  try {
+    rect = savedRange?.getBoundingClientRect() ?? null
+  } catch {
+    rect = null
+  }
+  const hasRect = !!rect && (rect.width > 0 || rect.height > 0 || rect.top > 0 || rect.left > 0)
+  if (hasRect && rect) {
+    lastAnchor = { x: rect.left, y: rect.bottom + 6 }
+    return
+  }
+  if (typeof pointerX === 'number' && typeof pointerY === 'number') {
+    lastAnchor = { x: pointerX, y: pointerY }
+  }
+}
+
 const open = (): void => {
   try {
     captureCaret()
     openedAt = Date.now()
 
-    let rect: DOMRect | null = null
-    try {
-      rect = savedRange?.getBoundingClientRect() ?? null
-    } catch {
-      rect = null
-    }
-
+    const desired = lastAnchor ?? { x: 24, y: 96 }
     const width = 320
     const height = 170
-    const x = Math.max(8, Math.min(rect?.left ?? 24, window.innerWidth - width - 8))
-    const y = rect
-      ? rect.bottom + height > window.innerHeight
-        ? Math.max(8, rect.top - height - 8)
-        : rect.bottom + 8
-      : 96
+    const x = Math.max(8, Math.min(desired.x, window.innerWidth - width - 8))
+    const y =
+      desired.y + height > window.innerHeight
+        ? Math.max(8, desired.y - height - 6)
+        : desired.y
     anchor.value = { x, y }
     draft.value = ''
     visible.value = true
@@ -216,13 +231,21 @@ const onBackdropMouseDown = (): void => {
   close()
 }
 
-const onDocumentContextMenu = (): void => captureCaret()
+const onDocumentContextMenu = (event: MouseEvent): void => {
+  captureCaret()
+  rememberAnchor(event.clientX, event.clientY)
+}
 
 const onDocumentKeyDown = (event: KeyboardEvent): void => {
   if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 't') {
     event.preventDefault()
-    if (visible.value) close()
-    else open()
+    if (visible.value) {
+      close()
+    } else {
+      captureCaret()
+      rememberAnchor()
+      open()
+    }
     return
   }
   if (event.key === 'Escape' && visible.value) {
