@@ -2109,6 +2109,9 @@ export const useEditorStore = defineStore('editor', {
       window.electron.ipcRenderer.on('mt::cm-insert-paragraph', (_, location) => {
         bus.emit('insertParagraph', location)
       })
+      window.electron.ipcRenderer.on('mt::cm-insert-tag', () => {
+        bus.emit('insertTag')
+      })
 
       window.electron.ipcRenderer.on('mt::spelling-replace-misspelling', (_, info) => {
         bus.emit('replace-misspelling', info)

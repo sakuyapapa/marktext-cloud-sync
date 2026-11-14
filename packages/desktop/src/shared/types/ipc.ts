@@ -239,6 +239,7 @@ export interface IpcMainEventChannels {
   'mt::cm-copy-as-html': []
   'mt::cm-copy-as-rich': []
   'mt::cm-insert-paragraph': [direction: 'before' | 'after']
+  'mt::cm-insert-tag': []
   'mt::cm-paste-as-plain-text': []
   'mt::current-language': [language: string]
   'mt::editor-ask-file-save': []

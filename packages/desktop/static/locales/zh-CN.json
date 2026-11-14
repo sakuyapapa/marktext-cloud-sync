@@ -219,7 +219,8 @@
       "copyPath": "复制路径",
       "showInFolder": "在文件夹中显示",
       "showInSideBar": "在侧边栏中显示"
-    }
+    },
+    "insertTag": "标签…"
   },
   "search": {
     "searchPlaceholder": "搜索",
@@ -1120,5 +1121,12 @@
     "viewImage": "查看图片",
     "copyLink": "复制链接地址",
     "resumed": "已切换到编辑模式，自动保存已恢复。"
+  },
+  "tagPopover": {
+    "title": "插入标签",
+    "placeholder": "例如：会议 待办",
+    "hint": "空格或逗号分隔多个标签；回车插入，Esc 关闭并回到正文。",
+    "confirm": "插入",
+    "cancel": "取消"
   }
 }
