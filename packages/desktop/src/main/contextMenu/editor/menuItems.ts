@@ -1,6 +1,5 @@
 
 import { BrowserWindow, type BaseWindow, type MenuItemConstructorOptions } from 'electron'
-import log from 'electron-log'
 import { t } from '../../i18n'
 
 // Use function form to avoid calling the translation function during module load
@@ -116,7 +115,6 @@ export const getInsertTag = (): MenuItemConstructorOptions => ({
   label: t('contextMenu.insertTag'),
   id: 'insertTagMenuItem',
   click() {
-    log.info('[tag] insert-tag requested from the paragraph menu')
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed()) window.webContents.send('mt::cm-insert-tag')
     }

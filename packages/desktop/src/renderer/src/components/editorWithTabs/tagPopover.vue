@@ -157,22 +157,9 @@ const open = (): void => {
     anchor.value = { x, y }
     draft.value = ''
     visible.value = true
-    report('popover opened in renderer')
 
     nextTick(() => {
       requestAnimationFrame(() => {
-        const element = card.value
-        if (!element) {
-          report('card element missing after nextTick')
-          return
-        }
-        const box = element.getBoundingClientRect()
-        const style = window.getComputedStyle(element)
-        report(
-          `card rect=${Math.round(box.x)},${Math.round(box.y)} ${Math.round(box.width)}x${Math.round(box.height)} ` +
-            `viewport=${window.innerWidth}x${window.innerHeight} display=${style.display} ` +
-            `visibility=${style.visibility} opacity=${style.opacity} zIndex=${style.zIndex}`
-        )
         inputRef.value?.focus()
       })
     })
@@ -200,7 +187,7 @@ const restoreCaret = (): void => {
 /** `#tag` tokens, space separated; commas are accepted as separators too. */
 const normaliseTags = (input: string): string =>
   input
-    .split(/[,，、\s]+/)
+    .split(/[,锛屻€乗s]+/)
     .map((tag) => tag.replace(/^#+/, '').trim())
     .filter(Boolean)
     .map((tag) => `#${tag}`)
@@ -213,7 +200,7 @@ const confirm = (): void => {
   if (!payload) return
   try {
     const inserted = document.execCommand('insertText', false, `${payload} `)
-    report(`insert ${inserted ? 'ok' : 'rejected'}: ${payload}`)
+    if (!inserted) report(`insert rejected: ${payload}`)
   } catch (error) {
     report(`insert failed: ${error instanceof Error ? error.message : String(error)}`)
   }
@@ -260,7 +247,6 @@ onMounted(() => {
   stopIpcListener = window.electron.ipcRenderer.on('mt::cm-insert-tag', () => open())
   document.addEventListener('contextmenu', onDocumentContextMenu, true)
   document.addEventListener('keydown', onDocumentKeyDown, true)
-  report('popover component mounted')
 })
 
 onUnmounted(() => {
@@ -269,3 +255,4 @@ onUnmounted(() => {
   document.removeEventListener('keydown', onDocumentKeyDown, true)
 })
 </script>
+
