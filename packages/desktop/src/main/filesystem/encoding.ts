@@ -1,5 +1,22 @@
-import ced from 'ced'
 import type { Encoding } from 'common/encoding'
+
+/**
+ * `ced` is a native addon. A build without the C++ toolchain ships its package
+ * without the compiled binding, so requiring it eagerly would abort the main
+ * process at startup. Load it on first use and fall back to UTF-8 when absent.
+ */
+type CedGuess = (buffer: Buffer) => string
+let cedModule: CedGuess | null | undefined
+const getCed = (): CedGuess | null => {
+  if (cedModule !== undefined) return cedModule
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    cedModule = require('ced') as CedGuess
+  } catch {
+    cedModule = null
+  }
+  return cedModule
+}
 
 const CED_ICONV_ENCODINGS: Record<string, string> = {
   'BIG5-CP950': 'big5',
@@ -68,6 +85,11 @@ export const guessEncoding = (buffer: Buffer, autoGuessEncoding: boolean): Encod
     // A file that is already valid UTF-8 must be decoded as UTF-8, regardless
     // of what `ced` heuristically guesses (#3151).
     if (isLikelyUtf8(buffer)) {
+      return { encoding: 'utf8', isBom }
+    }
+    const ced = getCed()
+    if (!ced) {
+      // No detector available: keeping utf8 matches the auto-guess-off path.
       return { encoding: 'utf8', isBom }
     }
     encoding = ced(buffer)
