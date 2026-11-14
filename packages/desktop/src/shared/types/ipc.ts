@@ -214,6 +214,8 @@ export interface IpcSendChannels {
   'window-file-saved': [windowId: number, tabId: string]
   'window-reload-by-id': [windowId: number]
   'window-toggle-always-on-top': [windowId: number]
+  'mt::tag::opened': []
+  'mt::tag::log': [message: string]
 }
 
 

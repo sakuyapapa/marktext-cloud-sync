@@ -3,7 +3,7 @@
     <div
       v-if="visible"
       class="tag-popover-layer"
-      @mousedown.self.prevent="close"
+      @mousedown.self.prevent="onBackdropMouseDown"
     >
       <div
         ref="card"
@@ -93,28 +93,34 @@ const captureCaret = (): void => {
 }
 
 const open = (): void => {
-  captureCaret()
-  openedAt = Date.now()
-
-  let rect: DOMRect | null = null
   try {
-    rect = savedRange?.getBoundingClientRect() ?? null
-  } catch {
-    rect = null
-  }
+    captureCaret()
+    openedAt = Date.now()
 
-  const width = 300
-  const height = 160
-  const x = Math.max(8, Math.min(rect?.left ?? 24, window.innerWidth - width - 8))
-  const y = rect
-    ? rect.bottom + height > window.innerHeight
-      ? Math.max(8, rect.top - height - 8)
-      : rect.bottom + 8
-    : 96
-  anchor.value = { x, y }
-  draft.value = ''
-  visible.value = true
-  requestAnimationFrame(() => inputRef.value?.focus())
+    let rect: DOMRect | null = null
+    try {
+      rect = savedRange?.getBoundingClientRect() ?? null
+    } catch {
+      rect = null
+    }
+
+    const width = 300
+    const height = 160
+    const x = Math.max(8, Math.min(rect?.left ?? 24, window.innerWidth - width - 8))
+    const y = rect
+      ? rect.bottom + height > window.innerHeight
+        ? Math.max(8, rect.top - height - 8)
+        : rect.bottom + 8
+      : 96
+    anchor.value = { x, y }
+    draft.value = ''
+    visible.value = true
+    window.electron.ipcRenderer.send('mt::tag::opened')
+    requestAnimationFrame(() => inputRef.value?.focus())
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    window.electron.ipcRenderer.send('mt::tag::log', `open failed: ${message}`)
+  }
 }
 
 const restoreCaret = (): void => {
@@ -159,10 +165,16 @@ const confirm = (): void => {
 
 const close = (): void => {
   if (!visible.value) return
+  // The click that dismissed the native context menu can be delivered to the
+  // page right after the IPC message; ignoring it here keeps the card open.
+  if (Date.now() - openedAt < 300) return
   visible.value = false
-  // Ignore the closing click of the native menu: it arrives right after the IPC
-  // message and must not tear the editor focus away a second time.
-  if (Date.now() - openedAt > 50) restoreCaret()
+  restoreCaret()
+}
+
+const onBackdropMouseDown = (): void => {
+  if (Date.now() - openedAt < 300) return
+  close()
 }
 
 const onDocumentContextMenu = (): void => captureCaret()
@@ -188,6 +200,7 @@ onMounted(() => {
   stopIpcListener = window.electron.ipcRenderer.on('mt::cm-insert-tag', () => open())
   document.addEventListener('contextmenu', onDocumentContextMenu, true)
   document.addEventListener('keydown', onDocumentKeyDown, true)
+  window.electron.ipcRenderer.send('mt::tag::log', 'popover component mounted')
 })
 
 onUnmounted(() => {

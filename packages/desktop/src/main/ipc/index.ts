@@ -12,6 +12,7 @@ import { registerDialogHandlers } from './dialog'
 import { registerDiagramHandlers } from './diagram'
 import { registerLinkHtmlHandler } from './linkHtml'
 import { registerSyncHandlers } from './sync'
+import { registerTagHandlers } from './tag'
 
 export const registerSandboxIpcHandlers = (): void => {
   registerBootInfo()
@@ -28,4 +29,5 @@ export const registerSandboxIpcHandlers = (): void => {
   registerDiagramHandlers()
   registerLinkHtmlHandler()
   registerSyncHandlers()
+  registerTagHandlers()
 }
