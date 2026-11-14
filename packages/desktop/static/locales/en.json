@@ -220,7 +220,8 @@
       "showInFolder": "Show in folder",
       "showInSideBar": "Show in Side Bar"
     },
-    "insertTag": "Tag…"
+    "insertTag": "Tag…",
+    "openNote": "Sticky note…"
   },
   "search": {
     "searchPlaceholder": "Search",

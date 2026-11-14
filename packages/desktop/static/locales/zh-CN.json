@@ -220,7 +220,8 @@
       "showInFolder": "在文件夹中显示",
       "showInSideBar": "在侧边栏中显示"
     },
-    "insertTag": "标签…"
+    "insertTag": "标签…",
+    "openNote": "便签…"
   },
   "search": {
     "searchPlaceholder": "搜索",

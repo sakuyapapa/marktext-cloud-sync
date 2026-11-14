@@ -108,19 +108,6 @@ export const getInsertAfter = (): MenuItemConstructorOptions => ({
   }
 })
 
-// Inline `#tag` insertion: the renderer owns the selection, so the menu only
-// asks it to open the tag popover near the caret. Broadcast instead of relying
-// on the menu's `targetWindow`, which is not always populated for popup menus.
-export const getInsertTag = (): MenuItemConstructorOptions => ({
-  label: t('contextMenu.insertTag'),
-  id: 'insertTagMenuItem',
-  click() {
-    for (const window of BrowserWindow.getAllWindows()) {
-      if (!window.isDestroyed()) window.webContents.send('mt::cm-insert-tag')
-    }
-  }
-})
-
 // Retained for backward compatibility
 export const CUT = getCUT()
 export const COPY = getCOPY()
@@ -130,8 +117,8 @@ export const COPY_AS_HTML = getCopyAsHtml()
 export const PASTE_AS_PLAIN_TEXT = getPasteAsPlainText()
 export const INSERT_BEFORE = getInsertBefore()
 export const INSERT_AFTER = getInsertAfter()
-export const INSERT_TAG = getInsertTag()
 
 export const SEPARATOR: MenuItemConstructorOptions = {
   type: 'separator'
 }
+

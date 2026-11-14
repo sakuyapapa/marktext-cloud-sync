@@ -90,6 +90,9 @@ export interface IpcInvokeChannels {
   'mt::sync::run': { args: []; ret: SyncStatus }
   'mt::sync::status': { args: []; ret: SyncStatus }
   'mt::sync::choose-workspace': { args: []; ret: string | null }
+  'mt::note::open': { args: []; ret: boolean }
+  'mt::note::toggle-pin': { args: []; ret: boolean }
+  'mt::note::is-pinned': { args: []; ret: boolean }
   'mt::uploader::upload': { args: [req: unknown]; ret: unknown }
   'mt::win::is-fullscreen': { args: []; ret: boolean }
   'mt::win::is-maximized': { args: []; ret: boolean }
@@ -216,6 +219,9 @@ export interface IpcSendChannels {
   'window-toggle-always-on-top': [windowId: number]
   'mt::tag::opened': []
   'mt::tag::log': [message: string]
+  'mt::note::submit': [text: string]
+  'mt::note::draft': [text: string]
+  'mt::note::cancel': []
 }
 
 
@@ -306,6 +312,8 @@ export interface IpcMainEventChannels {
   'mt::window-zoom': [zoomLevel: number]
   'settings::change-tab': [tab: string]
   'mt::sync::status': [status: SyncStatus]
+  'mt::note::prepare': []
+  'mt::note::insert': [text: string]
 }
 
 
@@ -344,3 +352,4 @@ export type SyncRet<K extends keyof IpcSyncChannels> = IpcSyncChannels[K]['ret']
 export type SendArgs<K extends keyof IpcSendChannels> = IpcSendChannels[K]
 
 export type EventArgs<K extends keyof IpcMainEventChannels> = IpcMainEventChannels[K]
+

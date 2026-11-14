@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'"
+    />
+    <title>便签</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family: 'Microsoft YaHei', 'Segoe UI', system-ui, sans-serif;
+        background: #fffbe6;
+        color: #3b3a36;
+        overflow: hidden;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+      #note {
+        flex: 1;
+        width: 100%;
+        padding: 14px 16px;
+        border: none;
+        outline: none;
+        resize: none;
+        background: transparent;
+        color: inherit;
+        font-size: 15px;
+        line-height: 1.7;
+        font-family: inherit;
+      }
+      #note::placeholder {
+        color: #a8a294;
+      }
+      footer {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-top: 1px solid #efe4b8;
+        background: #fff7d6;
+        font-size: 12px;
+        color: #8a8270;
+      }
+      .spacer {
+        flex: 1;
+      }
+      .hint {
+        white-space: nowrap;
+        font-size: 11px;
+      }
+      button {
+        white-space: nowrap;
+        border: 1px solid #d9c98a;
+        background: #fffdf5;
+        color: #4a463c;
+        border-radius: 6px;
+        padding: 5px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      button:hover {
+        background: #fff3c4;
+      }
+      button.primary {
+        background: #21b56f;
+        border-color: #21b56f;
+        color: #fff;
+        font-weight: 600;
+      }
+      button.primary:hover {
+        background: #1aa261;
+      }
+      #pin[aria-pressed='true'] {
+        background: #ffe9a8;
+        border-color: #e0c46a;
+      }
+      kbd {
+        font-family: inherit;
+        background: #fffdf5;
+        border: 1px solid #e3d9b4;
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <textarea
+      id="note"
+      placeholder="在这里随手写点什么，关闭便签时会自动插入到文档光标处…"
+      autofocus
+    ></textarea>
+    <footer>
+      <button id="pin" type="button" aria-pressed="true" title="让便签保持在其它窗口之上">
+        📌 置顶
+      </button>
+      <span class="spacer"></span>
+      <span class="hint"><kbd>Esc</kbd> 取消 · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 插入</span>
+      <button id="cancel" type="button">取消</button>
+      <button id="insert" type="button" class="primary">插入</button>
+    </footer>
+
+    <script>
+      const note = document.getElementById('note')
+      const pin = document.getElementById('pin')
+      const send = (channel, ...args) => window.electron.ipcRenderer.send(channel, ...args)
+
+      let draftTimer = null
+      note.addEventListener('input', () => {
+        clearTimeout(draftTimer)
+        draftTimer = setTimeout(() => send('mt::note::draft', note.value), 200)
+      })
+
+      const submit = () => {
+        clearTimeout(draftTimer)
+        send('mt::note::submit', note.value)
+      }
+      const cancel = () => {
+        clearTimeout(draftTimer)
+        send('mt::note::cancel')
+      }
+
+      document.getElementById('insert').addEventListener('click', submit)
+      document.getElementById('cancel').addEventListener('click', cancel)
+
+      pin.addEventListener('click', async () => {
+        const pinned = await window.electron.ipcRenderer.invoke('mt::note::toggle-pin')
+        pin.setAttribute('aria-pressed', String(!!pinned))
+        pin.textContent = pinned ? '📌 置顶' : '📍 取消置顶'
+      })
+
+      note.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          cancel()
+        } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault()
+          submit()
+        }
+      })
+
+      window.electron.ipcRenderer
+        .invoke('mt::note::is-pinned')
+        .then((pinned) => {
+          pin.setAttribute('aria-pressed', String(!!pinned))
+          if (!pinned) pin.textContent = '📍 取消置顶'
+        })
+        .catch(() => {})
+
+      note.focus()
+    </script>
+  </body>
+</html>
