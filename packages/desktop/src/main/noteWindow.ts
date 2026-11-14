@@ -1,28 +1,62 @@
 /**
- * Floating "sticky note" window.
+ * Floating sticky-note window.
  *
- * A real always-on-top BrowserWindow (not an in-page overlay) so the note stays
- * visible above other applications while the user reads the document. The page
- * is `static/note.html` and talks to the main process through the shared
- * preload bridge.
+ * Design constraints (from the user):
+ *  - look like the main window (same theme, no menu bar, no system chrome);
+ *  - the note can be pinned/unpinned at will and stays where it is put;
+ *  - the note itself only supports style and size changes — plain text only.
  *
- * Closing the window returns the draft to the document, per the feature spec;
- * only the explicit cancel path drops it.
+ * The window is frameless-looking (`titleBarStyle: 'hidden'`) so the OS resize
+ * borders remain available, while the visible chrome is our own header.
  */
 
+import fs from 'fs'
 import path from 'path'
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, Menu } from 'electron'
 import log from 'electron-log'
+
+interface NoteBounds {
+  x?: number
+  y?: number
+  width: number
+  height: number
+}
 
 let noteWindow: BrowserWindow | null = null
 let noteOwner: BrowserWindow | null = null
 let latestDraft = ''
 let suppressSubmitOnClose = false
+let pinned = true
+
+const BOUNDS_FILE = (): string => path.join(app.getPath('userData'), 'note-window.json')
+
+const loadBounds = (): NoteBounds => {
+  try {
+    const raw = JSON.parse(fs.readFileSync(BOUNDS_FILE(), 'utf8')) as NoteBounds
+    if (raw && Number.isFinite(raw.width) && Number.isFinite(raw.height)) return raw
+  } catch {
+    // First run or a corrupt file: fall back to the default size.
+  }
+  return { width: 440, height: 400 }
+}
+
+const saveBounds = (win: BrowserWindow): void => {
+  try {
+    if (win.isDestroyed() || win.isMinimized()) return
+    const bounds = win.getBounds()
+    fs.writeFileSync(BOUNDS_FILE(), JSON.stringify(bounds), 'utf8')
+  } catch (error) {
+    log.warn('[note] failed to persist window bounds', error)
+  }
+}
 
 const staticRoot = (): string =>
   path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), 'static')
 
-const noteUrl = (): string => `file://${path.join(staticRoot(), 'note.html').replace(/\\/g, '/')}`
+const noteUrl = (theme: string): string => {
+  const file = path.join(staticRoot(), 'note.html').replace(/\\/g, '/')
+  return `file://${file}?theme=${encodeURIComponent(theme)}`
+}
 
 export const getNoteWindow = (): BrowserWindow | null => noteWindow
 
@@ -47,13 +81,15 @@ const deliver = (text: string): void => {
 
 const finish = (): void => {
   suppressSubmitOnClose = true
-  if (noteWindow && !noteWindow.isDestroyed()) noteWindow.close()
+  if (noteWindow && !noteWindow.isDestroyed()) {
+    saveBounds(noteWindow)
+    noteWindow.close()
+  }
   noteWindow = null
   noteOwner = null
   latestDraft = ''
 }
 
-/** Explicit "插入到文档": send the text and close. */
 export const submitNote = (text: string): void => {
   setNoteDraft(text)
   const payload = latestDraft
@@ -61,13 +97,12 @@ export const submitNote = (text: string): void => {
   finish()
 }
 
-/** Cancel: drop the draft. */
 export const cancelNote = (): void => {
   latestDraft = ''
   finish()
 }
 
-export const openNoteWindow = (owner: BrowserWindow | null): BrowserWindow => {
+export const openNoteWindow = (owner: BrowserWindow | null, theme = 'light'): BrowserWindow => {
   noteOwner = owner
 
   if (noteWindow && !noteWindow.isDestroyed()) {
@@ -78,16 +113,21 @@ export const openNoteWindow = (owner: BrowserWindow | null): BrowserWindow => {
 
   latestDraft = ''
   suppressSubmitOnClose = false
+  const bounds = loadBounds()
 
   noteWindow = new BrowserWindow({
-    width: 440,
-    height: 400,
+    ...bounds,
     minWidth: 320,
-    minHeight: 220,
+    minHeight: 200,
     title: '便签',
     frame: true,
-    alwaysOnTop: true,
-    backgroundColor: '#fffbe6',
+    titleBarStyle: 'hidden',
+    autoHideMenuBar: true,
+    resizable: true,
+    maximizable: false,
+    fullscreenable: false,
+    alwaysOnTop: pinned,
+    backgroundColor: theme === 'dark' ? '#1f1f1f' : '#ffffff',
     webPreferences: {
       contextIsolation: true,
       sandbox: true,
@@ -96,8 +136,10 @@ export const openNoteWindow = (owner: BrowserWindow | null): BrowserWindow => {
     }
   })
 
-  // The window manager close button behaves like "插入到文档": the spec says
-  // closing the note returns its content to the document.
+  // No menu bar at all, per the design request.
+  noteWindow.setMenu(null)
+  noteWindow.setMenuBarVisibility(false)
+
   noteWindow.on('close', () => {
     if (suppressSubmitOnClose) return
     if (latestDraft.trim()) deliver(latestDraft)
@@ -108,18 +150,24 @@ export const openNoteWindow = (owner: BrowserWindow | null): BrowserWindow => {
     noteOwner = null
     latestDraft = ''
   })
-  noteWindow.on('unresponsive', () => log.warn('[note] window unresponsive'))
 
-  void noteWindow.loadURL(noteUrl())
+  noteWindow.on('resize', () => {
+    if (noteWindow) saveBounds(noteWindow)
+  })
+  noteWindow.on('move', () => {
+    if (noteWindow) saveBounds(noteWindow)
+  })
+
+  void noteWindow.loadURL(noteUrl(theme))
   return noteWindow
 }
 
 export const toggleNotePin = (): boolean => {
-  if (!noteWindow || noteWindow.isDestroyed()) return false
-  const next = !noteWindow.isAlwaysOnTop()
-  noteWindow.setAlwaysOnTop(next)
-  return next
+  if (!noteWindow || noteWindow.isDestroyed()) return pinned
+  pinned = !noteWindow.isAlwaysOnTop()
+  noteWindow.setAlwaysOnTop(pinned)
+  return pinned
 }
 
 export const isNotePinned = (): boolean =>
-  !!noteWindow && !noteWindow.isDestroyed() && noteWindow.isAlwaysOnTop()
+  !!noteWindow && !noteWindow.isDestroyed() ? noteWindow.isAlwaysOnTop() : pinned

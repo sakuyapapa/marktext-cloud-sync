@@ -1,4 +1,4 @@
-import { BrowserWindow, type MenuItemConstructorOptions } from 'electron'
+import { BrowserWindow, nativeTheme, type MenuItemConstructorOptions } from 'electron'
 import { t } from '../../i18n'
 import { openNoteWindow } from '../../noteWindow'
 
@@ -15,7 +15,8 @@ export const getOpenNote = (): MenuItemConstructorOptions => ({
       BrowserWindow.getFocusedWindow() ??
       BrowserWindow.getAllWindows()[0]
     if (win) win.webContents.send('mt::note::prepare')
+    const theme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
     // Give the renderer a tick to record the caret before focus moves.
-    setTimeout(() => openNoteWindow(win ?? null), 80)
+    setTimeout(() => openNoteWindow(win ?? null, theme), 80)
   }
 })
