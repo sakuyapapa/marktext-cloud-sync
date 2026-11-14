@@ -31,8 +31,10 @@ const loadKeytar = (): KeytarLike | null => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('keytar') as KeytarLike
-  } catch (error) {
-    log.warn('[native] keytar unavailable, falling back to a local secrets file:', error)
+  } catch {
+    // Expected on builds without the native toolchain; credentials go to the
+    // userData fallback file instead. Not an error, so keep it out of warn.
+    log.info('[native] keytar native binding not built; using userData/secrets-fallback.json')
     return null
   }
 }
@@ -42,8 +44,9 @@ export const getNativeKeymap = (): NativeKeymap | null => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     keymapModule = require('native-keymap') as NativeKeymap
-  } catch (error) {
-    log.warn('[native] native-keymap unavailable, keyboard layout fallback in use:', error)
+  } catch {
+    // Same trade-off as keytar: shortcuts keep working on the default layout.
+    log.info('[native] native-keymap native binding not built; keyboard layout mapping is empty')
     keymapModule = null
   }
   return keymapModule
