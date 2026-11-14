@@ -1,4 +1,4 @@
-import {
+﻿import {
   Setting as GeneralIcon,
   Edit as EditorIcon,
   Document as MarkdownIcon,
@@ -6,7 +6,8 @@ import {
   Picture as ImageIcon,
   Reading as SpellIcon,
   Operation as KeyBindingIcon,
-  Cloudy as SyncIcon
+  Cloudy as SyncIcon,
+  MagicStick as AiIcon
 } from '@element-plus/icons-vue'
 
 import preferences from '../../../../main/preferences/schema.json'
@@ -114,6 +115,12 @@ export const getCategory = (): PrefCategory[] => [
     label: 'sync',
     icon: SyncIcon,
     path: '/preference/sync'
+  },
+  {
+    name: t('preferences.categories.ai'),
+    label: 'ai',
+    icon: AiIcon,
+    path: '/preference/ai'
   }
 ]
 
@@ -178,12 +185,12 @@ export const getTranslatedSearchContent: CachedTranslator = (() => {
       try {
         translatedCategory = t(categoryKey)
       } catch (e) {
-        console.warn(`   ⚠️ Search category translation failed: ${errMessage(e)}`)
+        console.warn(`   鈿狅笍 Search category translation failed: ${errMessage(e)}`)
         try {
           const fallbackKey = `preferences.categories.${mappedCategory}`
           translatedCategory = t(fallbackKey)
         } catch (e2) {
-          console.warn(`   ❌ Search category fallback also failed: ${errMessage(e2)}`)
+          console.warn(`   鉂?Search category fallback also failed: ${errMessage(e2)}`)
           translatedCategory = categoryName
         }
       }
@@ -193,12 +200,12 @@ export const getTranslatedSearchContent: CachedTranslator = (() => {
       try {
         translatedPreference = t(itemKey)
       } catch (e) {
-        console.warn(`   ⚠️ Search item translation failed: ${errMessage(e)}`)
+        console.warn(`   鈿狅笍 Search item translation failed: ${errMessage(e)}`)
         try {
           const fallbackKey = `preferences.items.${k}`
           translatedPreference = t(fallbackKey)
         } catch (e2) {
-          console.warn(`   ❌ Search item fallback also failed: ${errMessage(e2)}`)
+          console.warn(`   鉂?Search item fallback also failed: ${errMessage(e2)}`)
           translatedPreference = description.split('--')[1] || description
         }
       }
@@ -232,7 +239,7 @@ export const setupLanguageChangeListener = (): void => {
           })
         )
       } catch (e) {
-        console.warn('⚠️ Failed to get updated language setting:', e)
+        console.warn('鈿狅笍 Failed to get updated language setting:', e)
       }
     }
   }
@@ -244,7 +251,7 @@ export const setupLanguageChangeListener = (): void => {
         // Locale changes are polled below.
       }
     } catch (e) {
-      console.warn('⚠️ Failed to set up language change listener:', e)
+      console.warn('鈿狅笍 Failed to set up language change listener:', e)
     }
   }
 
@@ -322,11 +329,11 @@ function createDebugPopup(): HTMLDivElement {
   `
 
   const title = document.createElement('h3')
-  title.textContent = '🛠️ Debug Info'
+  title.textContent = '馃洜锔?Debug Info'
   title.style.cssText = 'margin: 0; color: #333;'
 
   const closeButton = document.createElement('button')
-  closeButton.textContent = '✕ Close'
+  closeButton.textContent = '鉁?Close'
   closeButton.style.cssText = `
     background: #ff4444;
     color: white;
@@ -398,10 +405,10 @@ export const debugLanguageState = (): void => {
 
   setTimeout(() => {
     try {
-      let debugInfo = '<h4>🔍 i18n instance details:</h4>'
+      let debugInfo = '<h4>馃攳 i18n instance details:</h4>'
 
       if (!window.__VUE_I18N__) {
-        debugInfo += '<p style="color:red;">❌ __VUE_I18N__ does not exist</p>'
+        debugInfo += '<p style="color:red;">鉂?__VUE_I18N__ does not exist</p>'
       } else {
         const i18n = window.__VUE_I18N__
         debugInfo += `
@@ -416,18 +423,18 @@ export const debugLanguageState = (): void => {
             debugInfo += `<p><strong>global keys:</strong> ${globalKeys.join(', ')}</p>`
 
             if (typeof (i18n.global as VueI18nGlobal).t === 'function') {
-              debugInfo += '<p style="color:green;">✅ global.t function available</p>'
+              debugInfo += '<p style="color:green;">鉁?global.t function available</p>'
             } else {
-              debugInfo += '<p style="color:orange;">⚠️ global.t function unavailable</p>'
+              debugInfo += '<p style="color:orange;">鈿狅笍 global.t function unavailable</p>'
             }
           }
         } catch (e) {
-          debugInfo += `<p style="color:red;">❌ Error checking global: ${errMessage(e)}</p>`
+          debugInfo += `<p style="color:red;">鉂?Error checking global: ${errMessage(e)}</p>`
         }
 
         const i18nInstance = getI18nInstance()
         if (i18nInstance) {
-          debugInfo += '<p style="color:green;">✅ Successfully got i18n instance</p>'
+          debugInfo += '<p style="color:green;">鉁?Successfully got i18n instance</p>'
 
           let currentLanguage = 'unknown'
           const inst = i18nInstance as VueI18nGlobal
@@ -437,25 +444,26 @@ export const debugLanguageState = (): void => {
             currentLanguage = inst.locale
           }
 
-          debugInfo += `<p><strong>🌍 Current language:</strong> ${currentLanguage}</p>`
+          debugInfo += `<p><strong>馃實 Current language:</strong> ${currentLanguage}</p>`
 
           try {
             const tFn = (i18nInstance as VueI18nGlobal).t
             const testTranslation = tFn
               ? tFn('preferences.general.window.titleBarStyle.custom')
               : ''
-            debugInfo += `<p><strong>🔄 Test translation:</strong> ${testTranslation}</p>`
+            debugInfo += `<p><strong>馃攧 Test translation:</strong> ${testTranslation}</p>`
           } catch (e) {
-            debugInfo += `<p style="color:red;"><strong>🔄 Test translation failed:</strong> ${errMessage(e)}</p>`
+            debugInfo += `<p style="color:red;"><strong>馃攧 Test translation failed:</strong> ${errMessage(e)}</p>`
           }
         } else {
-          debugInfo += '<p style="color:red;">❌ Could not get a valid i18n instance</p>'
+          debugInfo += '<p style="color:red;">鉂?Could not get a valid i18n instance</p>'
         }
       }
 
       details.innerHTML = debugInfo
     } catch (e) {
-      details.innerHTML = `<p style="color:red;">❌ Debug failed: ${errMessage(e)}</p>`
+      details.innerHTML = `<p style="color:red;">鉂?Debug failed: ${errMessage(e)}</p>`
     }
   }, 500)
 }
+

@@ -34,6 +34,7 @@
       <export-setting-dialog />
       <rename />
       <import-modal />
+      <ai-assistant />
     </div>
   </div>
 </template>
@@ -52,7 +53,10 @@ import CommandPalette from '@/components/commandPalette/index.vue'
 import ExportSettingDialog from '@/components/exportSettings/index.vue'
 import Rename from '@/components/rename/index.vue'
 import ImportModal from '@/components/import/index.vue'
+import AiAssistant from '@/components/ai/AiAssistant.vue'
 import { prepareNoteInsert, insertNoteText } from '@/util/noteInsert'
+import { runAction } from '@/ai/actions'
+import { assistant, applyChunk, finishStream } from '@/ai/assistant'
 import bus from '@/bus'
 import { DEFAULT_STYLE } from '@/config'
 import { useLayoutStore } from '@/store/layout'
@@ -229,6 +233,18 @@ onMounted(async () => {
   // its text when the note is closed.
   window.electron.ipcRenderer.on('mt::note::prepare', () => prepareNoteInsert())
   window.electron.ipcRenderer.on('mt::note::insert', (_event, text) => insertNoteText(text))
+
+  // AI assistant: menu actions start a request, chunks stream into the drawer.
+  window.electron.ipcRenderer.on('mt::ai::action', (_event, action) => runAction(action))
+  window.electron.ipcRenderer.on('mt::ai::chunk', (_event, payload) => {
+    if (payload?.requestId !== assistant.requestId) return
+    applyChunk(payload.delta)
+    if (assistant.tab === 'chat') assistant.text = assistant.text
+  })
+  window.electron.ipcRenderer.on('mt::ai::done', (_event, payload) => {
+    if (payload?.requestId !== assistant.requestId) return
+    finishStream(payload.text, payload.error)
+  })
 
   notificationStore.listenForNotification()
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Cross-process IPC contract: invoke returns a Promise, send is fire-and-forget,
  * sync returns directly, and main events push payloads to renderer listeners.
  */
@@ -22,6 +22,7 @@ import type { BufferedState as BufferedStateType } from './bufferedState'
 import type { MenuTemplate, MenuPopupPosition } from './menu'
 import type { PandocCommandInfo } from './pandoc'
 import type { SyncConfig, SyncStatus, SyncTestResult } from './sync'
+import type { AiAction, AiChunkEvent, AiConfig, AiDoneEvent, AiRequest } from './ai'
 
 export interface SaveDialogRequest {
   title?: string
@@ -93,6 +94,9 @@ export interface IpcInvokeChannels {
   'mt::note::open': { args: []; ret: boolean }
   'mt::note::toggle-pin': { args: []; ret: boolean }
   'mt::note::is-pinned': { args: []; ret: boolean }
+  'mt::ai::get-config': { args: []; ret: AiConfig }
+  'mt::ai::set-config': { args: [partial: Partial<AiConfig>]; ret: AiConfig }
+  'mt::ai::test': { args: []; ret: { ok: boolean; message: string } }
   'mt::uploader::upload': { args: [req: unknown]; ret: unknown }
   'mt::win::is-fullscreen': { args: []; ret: boolean }
   'mt::win::is-maximized': { args: []; ret: boolean }
@@ -221,6 +225,8 @@ export interface IpcSendChannels {
   'mt::tag::log': [message: string]
   'mt::note::submit': [text: string]
   'mt::note::draft': [text: string]
+  'mt::ai::start': [request: AiRequest]
+  'mt::ai::abort': [requestId: string]
   'mt::note::cancel': []
 }
 
@@ -314,6 +320,9 @@ export interface IpcMainEventChannels {
   'mt::sync::status': [status: SyncStatus]
   'mt::note::prepare': []
   'mt::note::insert': [text: string]
+  'mt::ai::action': [action: AiAction]
+  'mt::ai::chunk': [payload: AiChunkEvent]
+  'mt::ai::done': [payload: AiDoneEvent]
 }
 
 
@@ -352,4 +361,5 @@ export type SyncRet<K extends keyof IpcSyncChannels> = IpcSyncChannels[K]['ret']
 export type SendArgs<K extends keyof IpcSendChannels> = IpcSendChannels[K]
 
 export type EventArgs<K extends keyof IpcMainEventChannels> = IpcMainEventChannels[K]
+
 

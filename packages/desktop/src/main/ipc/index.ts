@@ -1,4 +1,4 @@
-import { registerBootInfo } from './bootInfo'
+﻿import { registerBootInfo } from './bootInfo'
 import { registerFsHandlers } from './fs'
 import { registerPathHandlers } from './paths'
 import { registerRipgrepHandlers } from './ripgrep'
@@ -14,6 +14,7 @@ import { registerLinkHtmlHandler } from './linkHtml'
 import { registerSyncHandlers } from './sync'
 import { registerTagHandlers } from './tag'
 import { registerNoteHandlers } from './note'
+import { registerAiHandlers } from './ai'
 
 export const registerSandboxIpcHandlers = (): void => {
   registerBootInfo()
@@ -32,4 +33,6 @@ export const registerSandboxIpcHandlers = (): void => {
   registerSyncHandlers()
   registerTagHandlers()
   registerNoteHandlers()
+  registerAiHandlers()
 }
+

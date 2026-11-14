@@ -1,4 +1,4 @@
-import type { RouteRecordRaw } from 'vue-router'
+﻿import type { RouteRecordRaw } from 'vue-router'
 // .vue extensions are explicit so TS resolves them through the *.vue module
 // shim in src/types/renderer.d.ts. Vite handles extension-less imports at
 // runtime, but vue-tsc needs the suffix.
@@ -12,6 +12,7 @@ import Theme from '@/prefComponents/theme/index.vue'
 import Image from '@/prefComponents/image/index.vue'
 import Keybindings from '@/prefComponents/keybindings/index.vue'
 import Sync from '@/prefComponents/sync/index.vue'
+import Ai from '@/prefComponents/ai/index.vue'
 
 const parseSettingsPage = (type: string | null | undefined): string => {
   let pageUrl = '/preference'
@@ -77,9 +78,15 @@ const routes = (type: string | null | undefined): RouteRecordRaw[] => [
         path: 'sync',
         component: Sync,
         name: 'sync'
+      },
+      {
+        path: 'ai',
+        component: Ai,
+        name: 'ai'
       }
     ]
   }
 ]
 
 export default routes
+

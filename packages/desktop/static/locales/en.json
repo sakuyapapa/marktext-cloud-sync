@@ -221,7 +221,13 @@
       "showInSideBar": "Show in Side Bar"
     },
     "insertTag": "Tag…",
-    "openNote": "Sticky note…"
+    "openNote": "Sticky note…",
+    "ai": "AI",
+    "aiPolish": "Polish selection",
+    "aiSummarize": "Summarize as bullets",
+    "aiContinue": "Continue writing",
+    "aiTranslate": "Translate to English",
+    "aiChat": "Open chat panel"
   },
   "search": {
     "searchPlaceholder": "Search",
@@ -474,7 +480,8 @@
       "theme": "Theme",
       "image": "Image",
       "keybindings": "Keybindings",
-      "sync": "Sync"
+      "sync": "Sync",
+      "ai": "AI"
     },
     "general": {
       "title": "General",
@@ -841,6 +848,31 @@
         "never": "No sync has run yet.",
         "lastRun": "Last sync: {time}",
         "summary": "Last sync {time}: ↑{uploaded} ↓{downloaded}, {conflicts} conflict(s)"
+      },
+      "feedback": {
+        "saved": "Settings saved."
+      }
+    },
+    "ai": {
+      "title": "AI assistant",
+      "description": "Works with any OpenAI-compatible Chat Completions endpoint (DeepSeek, OpenAI, OneAPI, Ollama, …). The API key stays in the main process and is encrypted with the OS credential store.",
+      "provider": {
+        "title": "Model service",
+        "enabled": "Enable the AI menu",
+        "baseUrl": "Base URL",
+        "model": "Model",
+        "apiKey": "API key",
+        "apiKeySet": "Saved — leave empty to keep it",
+        "hint": "Point it at the /v1 root, e.g. https://api.deepseek.com/v1; local Ollama: http://127.0.0.1:11434/v1."
+      },
+      "params": {
+        "title": "Generation",
+        "temperature": "Temperature",
+        "maxTokens": "Max tokens"
+      },
+      "actions": {
+        "save": "Save",
+        "test": "Test connection"
       },
       "feedback": {
         "saved": "Settings saved."
