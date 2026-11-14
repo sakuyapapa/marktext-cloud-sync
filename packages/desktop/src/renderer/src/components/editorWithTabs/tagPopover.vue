@@ -2,50 +2,51 @@
   <div>
     <div
       v-if="visible"
-      class="mt-tag-backdrop"
-      :style="backdropStyle"
+      class="mt-tag-layer"
+      :style="layerStyle"
       @mousedown.self.prevent="onBackdropMouseDown"
-    />
-    <div
-      v-if="visible"
-      ref="card"
-      class="mt-tag-card"
-      :style="cardStyle"
     >
-      <div :style="titleStyle">
-        {{ t('tagPopover.title') }}
-      </div>
-      <el-input
-        ref="inputRef"
-        v-model="draft"
-        size="small"
-        :placeholder="t('tagPopover.placeholder')"
-        @keydown.enter.prevent="confirm"
-      />
-      <div :style="hintStyle">
-        {{ t('tagPopover.hint') }}
-      </div>
-      <div :style="actionsStyle">
-        <el-button
-          size="small"
-          @click="close"
-        >
-          {{ t('tagPopover.cancel') }}
-        </el-button>
-        <el-button
-          size="small"
-          type="primary"
-          @click="confirm"
-        >
-          {{ t('tagPopover.confirm') }}
-        </el-button>
+      <div
+        ref="card"
+        class="mt-tag-card"
+        :style="cardStyle"
+        @mousedown.stop
+      >
+        <div :style="titleStyle">
+          {{ t('tagPopover.title') }}
+        </div>
+        <el-input
+          ref="inputRef"
+          v-model="draft"
+          size="large"
+          :placeholder="t('tagPopover.placeholder')"
+          @keydown.enter.prevent="confirm"
+        />
+        <div :style="hintStyle">
+          {{ t('tagPopover.hint') }}
+        </div>
+        <div :style="actionsStyle">
+          <el-button
+            size="small"
+            @click="close"
+          >
+            {{ t('tagPopover.cancel') }}
+          </el-button>
+          <el-button
+            size="small"
+            type="primary"
+            @click="confirm"
+          >
+            {{ t('tagPopover.confirm') }}
+          </el-button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ElInput } from 'element-plus'
 
@@ -55,12 +56,10 @@ const visible = ref(false)
 const draft = ref('')
 const card = ref<HTMLElement | null>(null)
 const inputRef = ref<InstanceType<typeof ElInput> | null>(null)
-const anchor = ref({ x: 24, y: 96 })
 
-// The native context menu takes focus away, and some Electron builds drop the
-// DOM selection while the menu is open. Capture both the editable element and
-// the caret on `contextmenu` (which fires before the main process shows the
-// menu) so the tag can still be inserted afterwards.
+// The native context menu takes focus away, and Muya re-renders the block when
+// that happens; capture the editable element and the caret while the DOM is
+// still live so the tag text can be inserted afterwards.
 let savedEditor: HTMLElement | null = null
 let savedRange: Range | null = null
 let openedAt = 0
@@ -73,32 +72,37 @@ const report = (message: string): void => {
   }
 }
 
-// Inline styles on purpose: the card must render even if the theme custom
-// properties are unavailable in this window.
-const cardStyle = computed(() => ({
+// A dimmed full-window layer cannot be missed regardless of where the caret is
+// or which stacking context the editor lives in.
+const layerStyle = {
   position: 'fixed' as const,
-  left: `${anchor.value.x}px`,
-  top: `${anchor.value.y}px`,
-  width: '320px',
-  padding: '12px',
+  inset: 0,
+  zIndex: 2147483647,
+  background: 'rgba(0, 0, 0, 0.45)',
+  display: 'flex' as const,
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const
+}
+
+const cardStyle = {
+  width: '420px',
+  padding: '18px',
   boxSizing: 'border-box' as const,
-  borderRadius: '8px',
+  borderRadius: '10px',
   border: '2px solid #21b56f',
   background: '#ffffff',
   color: '#333333',
-  boxShadow: '0 8px 28px rgba(0, 0, 0, 0.28)',
-  zIndex: 2147483647
-}))
-
-const backdropStyle = {
-  position: 'fixed' as const,
-  inset: 0,
-  zIndex: 2147483646
+  boxShadow: '0 18px 48px rgba(0, 0, 0, 0.35)'
 }
 
-const titleStyle = { fontSize: '13px', fontWeight: 600, marginBottom: '8px' }
-const hintStyle = { marginTop: '6px', fontSize: '12px', lineHeight: 1.4, color: '#888888' }
-const actionsStyle = { display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '10px' }
+const titleStyle = { fontSize: '15px', fontWeight: 600, marginBottom: '12px' }
+const hintStyle = { marginTop: '10px', fontSize: '12px', lineHeight: 1.5, color: '#777777' }
+const actionsStyle = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: '8px',
+  marginTop: '14px'
+}
 
 const editorFromNode = (node: Node | null): HTMLElement | null => {
   if (!node) return null
@@ -119,49 +123,26 @@ const captureCaret = (): void => {
   }
 }
 
-// Position captured while the DOM is still live: the native menu and Muya's
-// re-render can invalidate the range, in which case the range rect collapses to
-// 0,0 and the card would land in the window corner.
-let lastAnchor: { x: number; y: number } | null = null
-
-const rememberAnchor = (pointerX?: number, pointerY?: number): void => {
-  let rect: DOMRect | null = null
-  try {
-    rect = savedRange?.getBoundingClientRect() ?? null
-  } catch {
-    rect = null
-  }
-  const hasRect = !!rect && (rect.width > 0 || rect.height > 0 || rect.top > 0 || rect.left > 0)
-  if (hasRect && rect) {
-    lastAnchor = { x: rect.left, y: rect.bottom + 6 }
-    return
-  }
-  if (typeof pointerX === 'number' && typeof pointerY === 'number') {
-    lastAnchor = { x: pointerX, y: pointerY }
-  }
-}
-
 const open = (): void => {
   try {
     captureCaret()
     openedAt = Date.now()
-
-    const desired = lastAnchor ?? { x: 24, y: 96 }
-    const width = 320
-    const height = 170
-    const x = Math.max(8, Math.min(desired.x, window.innerWidth - width - 8))
-    const y =
-      desired.y + height > window.innerHeight
-        ? Math.max(8, desired.y - height - 6)
-        : desired.y
-    anchor.value = { x, y }
     draft.value = ''
     visible.value = true
-
-    nextTick(() => {
-      requestAnimationFrame(() => {
-        inputRef.value?.focus()
-      })
+    requestAnimationFrame(() => {
+      inputRef.value?.focus()
+      const element = card.value
+      if (!element) {
+        report('card element missing after open')
+        return
+      }
+      const box = element.getBoundingClientRect()
+      const style = window.getComputedStyle(element)
+      report(
+        `card rect=${Math.round(box.x)},${Math.round(box.y)} ${Math.round(box.width)}x${Math.round(box.height)} ` +
+          `viewport=${window.innerWidth}x${window.innerHeight} display=${style.display} ` +
+          `visibility=${style.visibility} opacity=${style.opacity} zIndex=${style.zIndex}`
+      )
     })
   } catch (error) {
     report(`open failed: ${error instanceof Error ? error.message : String(error)}`)
@@ -187,7 +168,7 @@ const restoreCaret = (): void => {
 /** `#tag` tokens, space separated; commas are accepted as separators too. */
 const normaliseTags = (input: string): string =>
   input
-    .split(/[,锛屻€乗s]+/)
+    .split(/[,，、\s]+/)
     .map((tag) => tag.replace(/^#+/, '').trim())
     .filter(Boolean)
     .map((tag) => `#${tag}`)
@@ -218,21 +199,13 @@ const onBackdropMouseDown = (): void => {
   close()
 }
 
-const onDocumentContextMenu = (event: MouseEvent): void => {
-  captureCaret()
-  rememberAnchor(event.clientX, event.clientY)
-}
+const onDocumentContextMenu = (): void => captureCaret()
 
 const onDocumentKeyDown = (event: KeyboardEvent): void => {
   if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 't') {
     event.preventDefault()
-    if (visible.value) {
-      close()
-    } else {
-      captureCaret()
-      rememberAnchor()
-      open()
-    }
+    if (visible.value) close()
+    else open()
     return
   }
   if (event.key === 'Escape' && visible.value) {
@@ -247,6 +220,7 @@ onMounted(() => {
   stopIpcListener = window.electron.ipcRenderer.on('mt::cm-insert-tag', () => open())
   document.addEventListener('contextmenu', onDocumentContextMenu, true)
   document.addEventListener('keydown', onDocumentKeyDown, true)
+  report('popover component mounted')
 })
 
 onUnmounted(() => {
@@ -255,4 +229,3 @@ onUnmounted(() => {
   document.removeEventListener('keydown', onDocumentKeyDown, true)
 })
 </script>
-
