@@ -1,6 +1,6 @@
 import { BrowserWindow, nativeTheme, type MenuItemConstructorOptions } from 'electron'
 import { t } from '../../i18n'
-import { openNoteWindow } from '../../noteWindow'
+import { openNoteForWindow } from '../../noteWindow'
 
 /**
  * Sticky note: the renderer captures the caret first (`mt::note::prepare`),
@@ -9,14 +9,15 @@ import { openNoteWindow } from '../../noteWindow'
 export const getOpenNote = (): MenuItemConstructorOptions => ({
   label: t('contextMenu.openNote'),
   id: 'openNoteMenuItem',
+  // Displayed as a hint; the binding itself is registered per window in
+  // `keyboard/appShortcuts.ts`.
+  accelerator: 'CmdOrCtrl+Alt+N',
   click(_menuItem, targetWindow) {
     const win =
       (targetWindow as BrowserWindow | undefined) ??
       BrowserWindow.getFocusedWindow() ??
       BrowserWindow.getAllWindows()[0]
-    if (win) win.webContents.send('mt::note::prepare')
     const theme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
-    // Give the renderer a tick to record the caret before focus moves.
-    setTimeout(() => openNoteWindow(win ?? null, theme), 80)
+    openNoteForWindow(win ?? null, theme)
   }
 })

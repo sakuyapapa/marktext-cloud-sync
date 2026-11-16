@@ -227,7 +227,8 @@
     "aiSummarize": "Summarize as bullets",
     "aiContinue": "Continue writing",
     "aiTranslate": "Translate to English",
-    "aiChat": "Open chat panel"
+    "aiChat": "Open chat panel",
+    "aiAddContext": "Add to chat"
   },
   "search": {
     "searchPlaceholder": "Search",

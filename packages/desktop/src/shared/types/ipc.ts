@@ -321,6 +321,7 @@ export interface IpcMainEventChannels {
   'mt::note::prepare': []
   'mt::note::insert': [text: string]
   'mt::ai::action': [action: AiAction]
+  'mt::ai::add-context': []
   'mt::ai::chunk': [payload: AiChunkEvent]
   'mt::ai::done': [payload: AiDoneEvent]
 }
@@ -361,5 +362,6 @@ export type SyncRet<K extends keyof IpcSyncChannels> = IpcSyncChannels[K]['ret']
 export type SendArgs<K extends keyof IpcSendChannels> = IpcSendChannels[K]
 
 export type EventArgs<K extends keyof IpcMainEventChannels> = IpcMainEventChannels[K]
+
 
 

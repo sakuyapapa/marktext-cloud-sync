@@ -1,4 +1,4 @@
-import path from 'path'
+﻿import path from 'path'
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import type { BrowserWindowConstructorOptions } from 'electron'
 import log from 'electron-log'
@@ -11,6 +11,7 @@ import { TITLE_BAR_HEIGHT, editorWinOptions, isLinux, isOsx } from '../config'
 import { showEditorContextMenu } from '../contextMenu/editor'
 import { loadMarkdownFile, loadCliMarkdownFile } from '../filesystem/markdown'
 import { switchLanguage } from '../spellchecker'
+import { registerWindowShortcuts } from '../keyboard/appShortcuts'
 import type { TabOptions } from '@shared/types/files'
 import fs from 'fs'
 
@@ -237,7 +238,7 @@ class EditorWindow extends BaseWindow {
     })
     ;(['maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen'] as const).forEach(
       (channel) => {
-        // Electron's BrowserWindow.on() is heavily overloaded — the union of
+        // Electron's BrowserWindow.on() is heavily overloaded 鈥?the union of
         // event names can't be satisfied by a single overload, so we widen.
         ;(win! as { on(event: string, listener: () => void): void }).on(channel, () => {
           win!.webContents.send(`mt::window-${channel}`)
@@ -267,6 +268,7 @@ class EditorWindow extends BaseWindow {
     win.setSheetOffset(TITLE_BAR_HEIGHT)
 
     mainWindowState.manage(win)
+    registerWindowShortcuts(win)
 
     // Disable application menu shortcuts because we want to handle key bindings ourself.
     win.webContents.setIgnoreMenuShortcuts(true)
@@ -675,3 +677,4 @@ class EditorWindow extends BaseWindow {
 }
 
 export default EditorWindow
+

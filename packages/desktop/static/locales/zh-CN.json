@@ -227,7 +227,8 @@
     "aiSummarize": "总结为要点",
     "aiContinue": "续写",
     "aiTranslate": "翻译成英文",
-    "aiChat": "打开对话面板"
+    "aiChat": "打开对话面板",
+    "aiAddContext": "添加到对话"
   },
   "search": {
     "searchPlaceholder": "搜索",

@@ -56,7 +56,8 @@ import ImportModal from '@/components/import/index.vue'
 import AiAssistant from '@/components/ai/AiAssistant.vue'
 import { prepareNoteInsert, insertNoteText } from '@/util/noteInsert'
 import { runAction } from '@/ai/actions'
-import { assistant, applyChunk, finishStream } from '@/ai/assistant'
+import { assistant, applyChunk, finishStream, addTextChip } from '@/ai/assistant'
+import { captureAiContext } from '@/ai/context'
 import bus from '@/bus'
 import { DEFAULT_STYLE } from '@/config'
 import { useLayoutStore } from '@/store/layout'
@@ -236,6 +237,13 @@ onMounted(async () => {
 
   // AI assistant: menu actions start a request, chunks stream into the drawer.
   window.electron.ipcRenderer.on('mt::ai::action', (_event, action) => runAction(action))
+  window.electron.ipcRenderer.on('mt::ai::add-context', () => {
+    const context = captureAiContext()
+    if (!context.selection.trim()) return
+    addTextChip(context.selection, `选区 · ${context.label || `${context.selection.length} 字`}`)
+    assistant.open = true
+    assistant.tab = 'chat'
+  })
   window.electron.ipcRenderer.on('mt::ai::chunk', (_event, payload) => {
     if (payload?.requestId !== assistant.requestId) return
     applyChunk(payload.delta)

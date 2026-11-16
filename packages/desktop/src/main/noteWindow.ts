@@ -171,3 +171,12 @@ export const toggleNotePin = (): boolean => {
 
 export const isNotePinned = (): boolean =>
   !!noteWindow && !noteWindow.isDestroyed() ? noteWindow.isAlwaysOnTop() : pinned
+
+/**
+ * Shared entry point for the menu item and the keyboard shortcut: remember the
+ * caret, then open the note once focus has moved.
+ */
+export const openNoteForWindow = (win: BrowserWindow | null, theme: string): void => {
+  if (win && !win.isDestroyed()) win.webContents.send('mt::note::prepare')
+  setTimeout(() => openNoteWindow(win, theme), 80)
+}
