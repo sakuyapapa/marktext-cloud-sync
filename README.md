@@ -205,3 +205,17 @@ Thank you to all the people who have already contributed to MarkText[[contributo
 ## License
 
 [**MIT**](LICENSE).
+
+---
+
+## Fork additions
+
+This fork (based on upstream v0.23.0) adds:
+
+- **Cloud sync** – WebDAV / Git / Feishu Drive backends with conflict copies and a preferences panel. See [docs/CLOUD_SYNC.md](docs/CLOUD_SYNC.md).
+- **Sticky notes** – multiple named, always-on-top note windows bound to a tag; content can be inserted back at the caret. Ctrl+Alt+N.
+- **AI assistant** – OpenAI-compatible chat completions with streaming, per-segment accept, context chips (text + images) and a chat panel. Ctrl+Alt+A adds the selection to the conversation.
+- **Quick sync menu** – right-click → 同步 → Feishu / Git / WebDAV.
+
+Keyboard shortcuts are listed in Preferences → Keybindings and can be rebound there.
+
