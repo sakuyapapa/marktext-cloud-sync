@@ -26,6 +26,10 @@ export interface AiRequest {
   instruction?: string
   /** Target language for `translate`. */
   targetLang?: string
+  /** Extra context attached to the conversation as chips. */
+  contexts?: string[]
+  /** Image data URLs attached to the conversation (vision models). */
+  images?: string[]
 }
 
 export interface AiChunkEvent {

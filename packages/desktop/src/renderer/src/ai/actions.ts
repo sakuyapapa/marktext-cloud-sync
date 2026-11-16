@@ -3,7 +3,7 @@
  */
 
 import type { AiAction } from '@shared/types/ai'
-import { assistant, armWatchdog, resetResult } from './assistant'
+import { assistant, armWatchdog, chipImages, chipTexts, resetResult } from './assistant'
 import { captureAiContext } from './context'
 
 export const actionLabel = (action: AiAction): string => {
@@ -45,7 +45,9 @@ const start = (action: AiAction, instruction?: string): void => {
     before: context.before,
     after: context.after,
     instruction,
-    targetLang: '英文'
+    targetLang: '英文',
+    contexts: chipTexts(),
+    images: chipImages()
   })
 }
 
@@ -58,23 +60,24 @@ export const runAction = (action: AiAction): void => {
   start(action)
 }
 
-export const runChat = (instruction: string, withSelection: boolean): void => {
+export const runChat = (instruction: string): void => {
   if (!instruction.trim()) return
   assistant.messages.push({ role: 'user', text: instruction })
   assistant.text = ''
+  // Chips are the explicit context; the live selection is optional here.
+  assistant.segments = []
+  assistant.error = ''
+  assistant.requestId = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  assistant.streaming = true
+  assistant.tab = 'chat'
+  armWatchdog()
 
-  if (!withSelection) {
-    resetResult('chat')
-    assistant.streaming = true
-    armWatchdog()
-    window.electron.ipcRenderer.send('mt::ai::start', {
-      requestId: assistant.requestId,
-      action: 'chat',
-      selection: '',
-      instruction
-    })
-    return
-  }
-
-  start('chat', instruction)
+  window.electron.ipcRenderer.send('mt::ai::start', {
+    requestId: assistant.requestId,
+    action: 'chat',
+    selection: '',
+    instruction,
+    contexts: chipTexts(),
+    images: chipImages()
+  })
 }

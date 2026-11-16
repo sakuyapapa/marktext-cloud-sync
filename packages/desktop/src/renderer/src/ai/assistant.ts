@@ -16,6 +16,14 @@ export interface AiMessage {
   text: string
 }
 
+export interface AiChip {
+  id: string
+  type: 'text' | 'image'
+  label: string
+  text?: string
+  dataUrl?: string
+}
+
 export const assistant = reactive({
   open: false,
   tab: 'result' as 'result' | 'chat',
@@ -25,10 +33,44 @@ export const assistant = reactive({
   text: '',
   requestId: '',
   segments: [] as AiSegment[],
-  messages: [] as AiMessage[]
+  messages: [] as AiMessage[],
+  chips: [] as AiChip[]
 })
 
 let abortTimeout: ReturnType<typeof setTimeout> | null = null
+let chipSeq = 0
+
+export const addTextChip = (text: string, label: string): boolean => {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+  if (assistant.chips.some((chip) => chip.type === 'text' && chip.text === trimmed)) return false
+  assistant.chips.push({
+    id: `chip-${++chipSeq}`,
+    type: 'text',
+    label: label || `${trimmed.length} 字`,
+    text: trimmed
+  })
+  return true
+}
+
+export const addImageChip = (dataUrl: string, label: string): void => {
+  assistant.chips.push({
+    id: `chip-${++chipSeq}`,
+    type: 'image',
+    label,
+    dataUrl
+  })
+}
+
+export const removeChip = (id: string): void => {
+  assistant.chips = assistant.chips.filter((chip) => chip.id !== id)
+}
+
+export const chipTexts = (): string[] =>
+  assistant.chips.filter((chip) => chip.type === 'text' && chip.text).map((chip) => chip.text!)
+
+export const chipImages = (): string[] =>
+  assistant.chips.filter((chip) => chip.type === 'image' && chip.dataUrl).map((chip) => chip.dataUrl!)
 
 export const splitSegments = (text: string): AiSegment[] =>
   text
