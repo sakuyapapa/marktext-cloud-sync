@@ -1,12 +1,14 @@
 /**
- * Insert plain text at the current caret, preserving line breaks as paragraphs.
+ * Insert plain text at the current caret, keeping line breaks.
  *
- * Muya turns a real Enter keydown into a new paragraph, while
- * `execCommand('insertText', '\n')` drops the newlines — so multi-line text is
- * typed line by line with a synthetic Enter between lines.
+ * A plain (synthetic) Enter goes through Muya's `ScrollPage.insertAfter`, which
+ * throws when the block's DOM node has just been replaced by the preceding
+ * `insertText` call. Shift+Enter takes Muya's soft-break path instead: it only
+ * mutates the current block, so it is safe right after an edit and preserves the
+ * line structure inside one paragraph.
  */
 
-const pressEnter = (target: HTMLElement): void => {
+const pressSoftBreak = (target: HTMLElement): void => {
   for (const type of ['keydown', 'keyup'] as const) {
     target.dispatchEvent(
       new KeyboardEvent(type, {
@@ -14,6 +16,7 @@ const pressEnter = (target: HTMLElement): void => {
         code: 'Enter',
         keyCode: 13,
         which: 13,
+        shiftKey: true,
         bubbles: true,
         cancelable: true
       })
@@ -28,6 +31,6 @@ export const insertPlainText = (text: string, editor?: HTMLElement | null): void
     if (line) document.execCommand('insertText', false, line)
     if (index === lines.length - 1) return
     const target = editor ?? (document.activeElement as HTMLElement | null)
-    if (target) pressEnter(target)
+    if (target) pressSoftBreak(target)
   })
 }
