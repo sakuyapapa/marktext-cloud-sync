@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="pref-sync">
     <h4>{{ t('preferences.sync.title') }}</h4>
     <p class="notes">
@@ -30,6 +30,10 @@
             <el-option
               :label="t('preferences.sync.basic.providerGit')"
               value="git"
+            />
+            <el-option
+              :label="t('preferences.sync.basic.providerFeishu')"
+              value="feishu"
             />
           </el-select>
         </div>
@@ -138,7 +142,7 @@
       </template>
     </compound>
 
-    <compound v-else>
+    <compound v-else-if="form.provider === 'git'">
       <template #head>
         <h6 class="title">
           {{ t('preferences.sync.git.title') }}
@@ -177,6 +181,53 @@
         </div>
         <p class="notes">
           {{ t('preferences.sync.git.hint') }}
+        </p>
+      </template>
+    </compound>
+
+    <compound v-else>
+      <template #head>
+        <h6 class="title">
+          {{ t('preferences.sync.feishu.title') }}
+        </h6>
+      </template>
+      <template #children>
+        <div class="row">
+          <span class="row-label">{{ t('preferences.sync.feishu.baseUrl') }}</span>
+          <el-input
+            v-model="form.feishu.baseUrl"
+            class="row-input"
+            placeholder="https://open.feishu.cn"
+          />
+        </div>
+        <div class="row">
+          <span class="row-label">{{ t('preferences.sync.feishu.appId') }}</span>
+          <el-input
+            v-model="form.feishu.appId"
+            class="row-input"
+            placeholder="cli_xxxxxxxxxxxx"
+          />
+        </div>
+        <div class="row">
+          <span class="row-label">{{ t('preferences.sync.feishu.appSecret') }}</span>
+          <el-input
+            v-model="form.feishu.appSecret"
+            type="password"
+            show-password
+            class="row-input"
+            :placeholder="t('preferences.sync.feishu.appSecretPlaceholder')"
+          />
+        </div>
+        <div class="row">
+          <span class="row-label">{{ t('preferences.sync.feishu.folderToken') }}</span>
+          <el-input
+            v-model="form.feishu.folderToken"
+            class="row-input"
+            placeholder="fldcnxxxxxxxxxxxx"
+          />
+        </div>
+        <p class="notes">
+          {{ t('preferences.sync.feishu.hint') }}
         </p>
       </template>
     </compound>
@@ -233,7 +284,8 @@ const emptyConfig = (): SyncConfig => ({
   conflictPolicy: 'keep-both',
   debounceMs: 3000,
   webdav: { url: '', username: '', password: '', remoteDir: 'marktext', allowInsecure: false },
-  git: { remoteUrl: '', branch: 'main', userName: '', userEmail: '' }
+  git: { remoteUrl: '', branch: 'main', userName: '', userEmail: '' },
+  feishu: { appId: '', appSecret: '', folderToken: '', baseUrl: 'https://open.feishu.cn' }
 })
 
 const form = reactive<SyncConfig>(emptyConfig())
@@ -254,6 +306,7 @@ const applyConfig = (config: SyncConfig): void => {
   Object.assign(form, config)
   form.webdav = { ...form.webdav, ...config.webdav }
   form.git = { ...form.git, ...config.git }
+  form.feishu = { ...form.feishu, ...config.feishu }
 }
 
 const applyStatus = (next: SyncStatus): void => {
@@ -373,3 +426,4 @@ onUnmounted(() => {
   font-style: normal;
 }
 </style>
+

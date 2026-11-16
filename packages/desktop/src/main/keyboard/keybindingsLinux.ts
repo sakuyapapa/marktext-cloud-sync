@@ -1,12 +1,15 @@
-
+﻿
 // NOTE: Avoid `Ctrl+Alt` and `Alt` shortcuts on Linux because Ubuntu based OSs have reserved system shortcuts (see GH#2370).
 //       Binding shortcuts to these modifiers will result in odd behavior on Ubuntu.
 // NOTE: Don't use `Ctrl+Shift+U` because it's used IBus for unicode support.
-// NOTE: We can't determine the character for a dead key and no translation is provided. E.g. Ctrl+` (=Ctrl+Shift+´) on a
+// NOTE: We can't determine the character for a dead key and no translation is provided. E.g. Ctrl+` (=Ctrl+Shift+麓) on a
 //       none nodeadkeys german keyboard cannot be interpreted. In general don't bind default shortcuts to characters that
 //       can be produced with ^ or ` on any keyboard. --> ^, `, ", ~, ...
 
 const keybindings: Map<string, string> = new Map([
+  ['note.open', 'Ctrl+Alt+N'],
+  ['ai.add-context', 'Ctrl+Alt+A'],
+
   ['mt.hide', ''],
   ['mt.hide-others', ''],
 
@@ -116,3 +119,5 @@ const keybindings: Map<string, string> = new Map([
 ])
 
 export default keybindings
+
+

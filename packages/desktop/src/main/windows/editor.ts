@@ -11,7 +11,7 @@ import { TITLE_BAR_HEIGHT, editorWinOptions, isLinux, isOsx } from '../config'
 import { showEditorContextMenu } from '../contextMenu/editor'
 import { loadMarkdownFile, loadCliMarkdownFile } from '../filesystem/markdown'
 import { switchLanguage } from '../spellchecker'
-import { registerWindowShortcuts } from '../keyboard/appShortcuts'
+import { registerForkShortcutFallback } from '../keyboard/forkShortcuts'
 import type { TabOptions } from '@shared/types/files'
 import fs from 'fs'
 
@@ -268,7 +268,7 @@ class EditorWindow extends BaseWindow {
     win.setSheetOffset(TITLE_BAR_HEIGHT)
 
     mainWindowState.manage(win)
-    registerWindowShortcuts(win)
+    registerForkShortcutFallback(win, this._accessor)
 
     // Disable application menu shortcuts because we want to handle key bindings ourself.
     win.webContents.setIgnoreMenuShortcuts(true)
@@ -677,4 +677,6 @@ class EditorWindow extends BaseWindow {
 }
 
 export default EditorWindow
+
+
 

@@ -1,7 +1,10 @@
-import { t } from '../i18n'
+﻿import { t } from '../i18n'
 
 const COMMAND_KEY_MAP: Record<string, string> = {
   'view.read-only-mode': 'readingMode.title',
+  'note.open': 'commands.mt.openNote',
+  'ai.add-context': 'commands.mt.aiAddContext',
+
   'mt.hide': 'commands.mt.hide',
   'mt.hide-others': 'commands.mt.hideOthers',
 
@@ -162,3 +165,5 @@ export default (id: string): string => {
   // Resolve descriptions on each call so language changes take effect immediately.
   return id in COMMAND_KEY_MAP ? t(COMMAND_KEY_MAP[id]) : id
 }
+
+

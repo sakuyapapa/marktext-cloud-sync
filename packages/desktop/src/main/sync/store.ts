@@ -1,7 +1,7 @@
-/**
+﻿/**
  * Persistence for the sync settings. Secrets use Electron's safeStorage
  * (DPAPI on Windows) when available and fall back to plain text only on
- * platforms where the OS keyring is not reachable — the same trade-off the app
+ * platforms where the OS keyring is not reachable 鈥?the same trade-off the app
  * already makes for other optional integrations.
  */
 
@@ -28,12 +28,22 @@ export const DEFAULT_SYNC_CONFIG: SyncConfig = {
     branch: 'main',
     userName: '',
     userEmail: ''
+  },
+  feishu: {
+    appId: '',
+    appSecret: '',
+    folderToken: '',
+    baseUrl: 'https://open.feishu.cn'
   }
 }
 
 interface SyncStoreShape {
-  config: Omit<SyncConfig, 'webdav'> & {
+  config: Omit<SyncConfig, 'webdav' | 'feishu'> & {
     webdav: Omit<SyncConfig['webdav'], 'password'> & { passwordCipher?: string; passwordPlain?: string }
+    feishu: Omit<SyncConfig['feishu'], 'appSecret'> & {
+      appSecretCipher?: string
+      appSecretPlain?: string
+    }
   }
 }
 
@@ -91,6 +101,7 @@ export class SyncConfigStore {
     const raw = this.store.get('config') as SyncStoreShape['config'] | undefined
     if (!raw) return structuredClone(DEFAULT_SYNC_CONFIG)
     const { passwordCipher, passwordPlain, ...webdav } = raw.webdav ?? {}
+    const { appSecretCipher, appSecretPlain, ...feishu } = raw.feishu ?? {}
     return {
       ...structuredClone(DEFAULT_SYNC_CONFIG),
       ...raw,
@@ -98,6 +109,11 @@ export class SyncConfigStore {
         ...DEFAULT_SYNC_CONFIG.webdav,
         ...webdav,
         password: decryptSecret({ passwordCipher, passwordPlain })
+      },
+      feishu: {
+        ...DEFAULT_SYNC_CONFIG.feishu,
+        ...feishu,
+        appSecret: decryptSecret({ passwordCipher: appSecretCipher, passwordPlain: appSecretPlain })
       }
     }
   }
@@ -108,14 +124,18 @@ export class SyncConfigStore {
       ...current,
       ...normalise(partial),
       webdav: { ...current.webdav, ...(partial.webdav ?? {}) },
-      git: { ...current.git, ...(partial.git ?? {}) }
+      git: { ...current.git, ...(partial.git ?? {}) },
+      feishu: { ...current.feishu, ...(partial.feishu ?? {}) }
     }
     const { password, ...webdavRest } = merged.webdav
-    const secret = encryptSecret(password)
+    const { appSecret, ...feishuRest } = merged.feishu
     this.store.set('config', {
       ...merged,
-      webdav: { ...webdavRest, ...secret }
+      webdav: { ...webdavRest, ...encryptSecret(password) },
+      feishu: { ...feishuRest, ...{ appSecretCipher: encryptSecret(appSecret).passwordCipher, appSecretPlain: encryptSecret(appSecret).passwordPlain } }
     } as unknown as SyncStoreShape['config'])
     return merged
   }
 }
+
+

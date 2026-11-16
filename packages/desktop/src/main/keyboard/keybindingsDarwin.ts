@@ -1,8 +1,11 @@
-
+﻿
 // NOTE: Avoid pure `Option` aka `Alt` shortcuts on macOS because these are used to produce alternative characters on all letters and digits.
 //       Our current key manager will forbid the usage of these key combinations too.
 
 const keybindings: Map<string, string> = new Map([
+  ['note.open', 'Command+Option+N'],
+  ['ai.add-context', 'Command+Option+A'],
+
   ['mt.hide', 'Command+H'],
   ['mt.hide-others', 'Command+Option+H'],
   ['file.preferences', 'Command+,'], // located under MarkText menu in macOS only
@@ -112,3 +115,6 @@ const keybindings: Map<string, string> = new Map([
 ])
 
 export default keybindings
+
+
+

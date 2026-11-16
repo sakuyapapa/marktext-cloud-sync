@@ -818,7 +818,8 @@
         "conflictKeepBoth": "两边都保留（推荐）",
         "conflictLocal": "以本机为准",
         "conflictRemote": "以远端为准",
-        "conflictHint": "落败的版本一定会另存为 <文件名>.conflict-<时间>-<来源>.md，任何编辑都不会丢。"
+        "conflictHint": "落败的版本一定会另存为 <文件名>.conflict-<时间>-<来源>.md，任何编辑都不会丢。",
+        "providerFeishu": "飞书云文档"
       },
       "webdav": {
         "title": "WebDAV",
@@ -852,6 +853,15 @@
       },
       "feedback": {
         "saved": "设置已保存。"
+      },
+      "feishu": {
+        "title": "飞书云文档（Drive）",
+        "baseUrl": "开放平台地址",
+        "appId": "App ID",
+        "appSecret": "App Secret",
+        "appSecretPlaceholder": "已保存，留空则不修改",
+        "folderToken": "文件夹 Token",
+        "hint": "在飞书开放平台创建「企业自建应用」，开通 drive:drive 权限并发布版本，然后把目标文件夹共享给这个应用；文件夹 Token 可从分享链接（/folder/ 后面那段）取得。Markdown 文件会以普通文件形式同步到该文件夹。"
       }
     },
     "ai": {
@@ -887,7 +897,9 @@
   "commands": {
     "mt": {
       "hide": "隐藏 MarkText",
-      "hideOthers": "隐藏其他"
+      "hideOthers": "隐藏其他",
+      "openNote": "打开便签",
+      "aiAddContext": "添加到 AI 对话"
     },
     "file": {
       "newWindow": "新建窗口",

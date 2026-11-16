@@ -1,4 +1,4 @@
-const COMMANDS = Object.freeze({
+﻿const COMMANDS = Object.freeze({
   VIEW_READ_ONLY_MODE: 'view.read-only-mode',
   EDIT_COPY: 'edit.copy',
   EDIT_COPY_AS_HTML: 'edit.copy-as-html',
@@ -18,6 +18,9 @@ const COMMANDS = Object.freeze({
   EDIT_SCREENSHOT: 'edit.screenshot',
   EDIT_SELECT_ALL: 'edit.select-all',
   EDIT_UNDO: 'edit.undo',
+
+  MT_OPEN_NOTE: 'note.open',
+  MT_AI_ADD_CONTEXT: 'ai.add-context',
 
   FILE_CHECK_UPDATE: 'file.check-update',
   FILE_CLOSE_TAB: 'file.close-tab',
@@ -112,3 +115,5 @@ const COMMANDS = Object.freeze({
 export type CommandId = (typeof COMMANDS)[keyof typeof COMMANDS]
 
 export default COMMANDS
+
+

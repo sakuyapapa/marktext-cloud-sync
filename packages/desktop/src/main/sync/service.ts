@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Main-process glue: owns the configured workspace, the watcher, the interval
  * timer and the status that the renderer shows. The actual file comparison is
  * delegated to `SyncEngine` (WebDAV) or `GitSync` (Git) so both stay testable
@@ -13,6 +13,7 @@ import log from 'electron-log'
 import chokidar, { type FSWatcher } from 'chokidar'
 import { SyncEngine, type SyncProvider } from './engine'
 import { createWebdavProvider } from './webdav'
+import { createFeishuProvider } from './feishu'
 import { GitSync } from './git'
 import { SyncConfigStore } from './store'
 import type { SyncConfig, SyncStatus, SyncTestResult } from '@shared/types/sync'
@@ -73,6 +74,14 @@ export class CloudSyncService {
   }
 
   private buildProvider(config: SyncConfig): SyncProvider {
+    if (config.provider === 'feishu') {
+      return createFeishuProvider({
+        appId: config.feishu.appId,
+        appSecret: config.feishu.appSecret,
+        folderToken: config.feishu.folderToken,
+        baseUrl: config.feishu.baseUrl
+      })
+    }
     return createWebdavProvider({
       url: config.webdav.url,
       username: config.webdav.username,
@@ -95,7 +104,9 @@ export class CloudSyncService {
         const git = new GitSync(config.workspaceDir, config.git)
         return await git.test()
       }
-      if (!config.webdav.url) return { ok: false, message: 'WebDAV URL is empty' }
+      if (config.provider === 'webdav' && !config.webdav.url) {
+        return { ok: false, message: 'WebDAV URL is empty' }
+      }
       const provider = this.buildProvider(config)
       return await provider.test()
     } catch (error) {
@@ -248,3 +259,4 @@ export class CloudSyncService {
 }
 
 export const cloudSyncService = new CloudSyncService()
+

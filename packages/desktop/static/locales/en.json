@@ -818,7 +818,8 @@
         "conflictKeepBoth": "Keep both (recommended)",
         "conflictLocal": "Prefer this machine",
         "conflictRemote": "Prefer the remote copy",
-        "conflictHint": "The losing version is always written next to the document as <name>.conflict-<time>-<side>.md, so no edit is ever discarded."
+        "conflictHint": "The losing version is always written next to the document as <name>.conflict-<time>-<side>.md, so no edit is ever discarded.",
+        "providerFeishu": "Feishu Drive"
       },
       "webdav": {
         "title": "WebDAV",
@@ -852,6 +853,15 @@
       },
       "feedback": {
         "saved": "Settings saved."
+      },
+      "feishu": {
+        "title": "Feishu Drive",
+        "baseUrl": "Open platform URL",
+        "appId": "App ID",
+        "appSecret": "App secret",
+        "appSecretPlaceholder": "Saved — leave empty to keep it",
+        "folderToken": "Folder token",
+        "hint": "Create a custom app on the Feishu open platform, grant drive:drive, publish it, then share the target folder with the app. The folder token is the part after /folder/ in the share URL. Markdown files sync as regular Drive files."
       }
     },
     "ai": {
@@ -887,7 +897,9 @@
   "commands": {
     "mt": {
       "hide": "Hide MarkText",
-      "hideOthers": "Hide Others"
+      "hideOthers": "Hide Others",
+      "openNote": "Open sticky note",
+      "aiAddContext": "Add selection to AI chat"
     },
     "file": {
       "newWindow": "New Window",

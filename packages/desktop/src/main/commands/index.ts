@@ -1,6 +1,7 @@
-import COMMAND_CONSTANTS, { type CommandId } from 'common/commands/constants'
+﻿import COMMAND_CONSTANTS, { type CommandId } from 'common/commands/constants'
 import { loadFileCommands } from './file'
 import { loadTabCommands } from './tab'
+import { loadForkCommands } from './fork'
 
 export const COMMANDS = COMMAND_CONSTANTS
 
@@ -16,6 +17,7 @@ export type CommandCallback = (...args: any[]) => any
 export const loadDefaultCommands = (commandManager: CommandManager): void => {
   loadFileCommands(commandManager)
   loadTabCommands(commandManager)
+  loadForkCommands(commandManager)
 }
 
 class CommandManagerClass {
@@ -63,3 +65,4 @@ class CommandManagerClass {
 export type CommandManager = CommandManagerClass
 const commandManagerInstance = new CommandManagerClass()
 export { commandManagerInstance as CommandManager }
+

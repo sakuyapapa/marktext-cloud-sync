@@ -1,12 +1,18 @@
-import { BrowserWindow, dialog, ipcMain } from 'electron'
+﻿import { BrowserWindow, dialog, ipcMain } from 'electron'
 import { cloudSyncService } from '../sync/service'
 import type { SyncConfig } from '@shared/types/sync'
 
 /** Renderer-side config sends carry the password field; an empty value means "keep the stored one". */
 const withStoredPassword = (partial: Partial<SyncConfig>): Partial<SyncConfig> => {
-  if (!partial.webdav || partial.webdav.password !== '') return partial
   const stored = cloudSyncService.getConfig()
-  return { ...partial, webdav: { ...partial.webdav, password: stored.webdav.password } }
+  const next: Partial<SyncConfig> = { ...partial }
+  if (partial.webdav && partial.webdav.password === '') {
+    next.webdav = { ...partial.webdav, password: stored.webdav.password }
+  }
+  if (partial.feishu && partial.feishu.appSecret === '') {
+    next.feishu = { ...partial.feishu, appSecret: stored.feishu.appSecret }
+  }
+  return next
 }
 
 export const registerSyncHandlers = (): void => {
@@ -32,3 +38,4 @@ export const registerSyncHandlers = (): void => {
     return result.filePaths[0] ?? null
   })
 }
+

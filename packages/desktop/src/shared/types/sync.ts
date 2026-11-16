@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Types shared by the main process sync service, the preload bridge and the
  * preferences UI. Kept free of Electron imports so unit tests and the pure
  * Node engine can consume them directly.
  */
 
-export type SyncProviderKind = 'webdav' | 'git'
+export type SyncProviderKind = 'webdav' | 'git' | 'feishu'
 
 export type SyncConflictPolicy = 'keep-both' | 'local-wins' | 'remote-wins'
 
@@ -17,6 +17,16 @@ export interface WebdavSyncConfig {
   remoteDir: string
   /** Skip TLS verification (self-signed NAS certificates). */
   allowInsecure: boolean
+}
+
+export interface FeishuSyncConfig {
+  /** Feishu app credentials (open.feishu.cn → 开发者后台). */
+  appId: string
+  appSecret: string
+  /** Token of the Drive folder shared with the app. */
+  folderToken: string
+  /** open.feishu.cn (China) or open.larksuite.com. */
+  baseUrl: string
 }
 
 export interface GitSyncConfig {
@@ -39,6 +49,7 @@ export interface SyncConfig {
   debounceMs: number
   webdav: WebdavSyncConfig
   git: GitSyncConfig
+  feishu: FeishuSyncConfig
 }
 
 export type SyncPhase =
@@ -82,3 +93,4 @@ export interface GitSyncResult {
   conflicts: string[]
   message: string
 }
+
