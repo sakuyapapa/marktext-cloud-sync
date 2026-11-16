@@ -1,7 +1,7 @@
-﻿/**
+/**
  * Persistence for the sync settings. Secrets use Electron's safeStorage
  * (DPAPI on Windows) when available and fall back to plain text only on
- * platforms where the OS keyring is not reachable 鈥?the same trade-off the app
+ * platforms where the OS keyring is not reachable — the same trade-off the app
  * already makes for other optional integrations.
  */
 

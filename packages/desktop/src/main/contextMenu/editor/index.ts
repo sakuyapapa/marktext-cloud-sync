@@ -1,4 +1,4 @@
-﻿import { Menu, MenuItem, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
+import { Menu, MenuItem, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
 import {
   getCUT,
   getCOPY,
@@ -123,7 +123,7 @@ export const showEditorContextMenu = (
     })
     // The original JS passes an array literal here, which Electron treats as
     // the options object. Cast to satisfy the typed overload.
-    // The original JS passed an array literal 鈥?Electron tolerated it. The
+    // The original JS passed an array literal — Electron tolerated it. The
     // typed overload wants an options object, so produce one explicitly.
     // `event` is intentionally unused (params carries x/y); the function
     // signature keeps it to mirror the webContents.on('context-menu', ...)

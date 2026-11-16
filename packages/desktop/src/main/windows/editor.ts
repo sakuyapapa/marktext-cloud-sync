@@ -1,4 +1,4 @@
-﻿import path from 'path'
+import path from 'path'
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import type { BrowserWindowConstructorOptions } from 'electron'
 import log from 'electron-log'
@@ -238,7 +238,7 @@ class EditorWindow extends BaseWindow {
     })
     ;(['maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen'] as const).forEach(
       (channel) => {
-        // Electron's BrowserWindow.on() is heavily overloaded 鈥?the union of
+        // Electron's BrowserWindow.on() is heavily overloaded — the union of
         // event names can't be satisfied by a single overload, so we widen.
         ;(win! as { on(event: string, listener: () => void): void }).on(channel, () => {
           win!.webContents.send(`mt::window-${channel}`)
