@@ -1,11 +1,12 @@
 /**
- * Insertion bridge for the sticky-note window.
+ * Insertion bridge for sticky-note windows.
  *
- * The note window takes focus, so the caret has to be captured before it opens
- * (`mt::note::prepare`) and replayed when the note content comes back
- * (`mt::note::insert`). Muya handles the resulting `input` event, which keeps
- * inline formatting, the undo stack and the markdown state consistent.
+ * The note window takes focus, so the caret is captured before it opens
+ * (`mt::note::prepare`) and replayed when the note sends its text back
+ * (`mt::note::insert`).
  */
+
+import { insertPlainText } from '@/util/insertText'
 
 let savedEditor: HTMLElement | null = null
 let savedRange: Range | null = null
@@ -48,7 +49,7 @@ export const insertNoteText = (text: string): void => {
   }
 
   try {
-    document.execCommand('insertText', false, payload)
+    insertPlainText(payload, savedEditor)
   } catch (error) {
     console.error('[note] failed to insert note content', error)
   }

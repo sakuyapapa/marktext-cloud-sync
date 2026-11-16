@@ -11,7 +11,8 @@ import {
   getInsertBefore,
   getInsertAfter
 } from './menuItems'
-import { getOpenNote } from './note'
+import { getNoteMenu } from './note'
+import { getSyncMenu } from './sync'
 import { getAiMenu } from './ai'
 import spellcheckMenuBuilder from './spellcheck'
 import { t } from '../../i18n'
@@ -44,7 +45,8 @@ type ContextMenuEvent = {
 const getContextItems = (): MenuItemConstructorOptions[] => [
   getInsertBefore(),
   getInsertAfter(),
-  getOpenNote(),
+  getNoteMenu(),
+  getSyncMenu(),
   getAiMenu(),
   SEPARATOR,
   getCUT(),
@@ -131,4 +133,5 @@ export const showEditorContextMenu = (
     menu.popup({ window: win, x: params.x, y: params.y })
   }
 }
+
 

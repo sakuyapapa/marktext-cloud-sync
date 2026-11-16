@@ -1,67 +1,40 @@
-/**
- * Floating sticky-note window.
+﻿/**
+ * Sticky-note windows.
  *
- * Design constraints (from the user):
- *  - look like the main window (same theme, no menu bar, no system chrome);
- *  - the note can be pinned/unpinned at will and stays where it is put;
- *  - the note itself only supports style and size changes — plain text only.
- *
- * The window is frameless-looking (`titleBarStyle: 'hidden'`) so the OS resize
- * borders remain available, while the visible chrome is our own header.
+ * Each note is its own small always-on-top BrowserWindow, so several notes can be
+ * open at once. Window chrome is hidden; the page draws a drag bar with the note
+ * name, its bound tag, a style switch and the close button.
  */
 
-import fs from 'fs'
 import path from 'path'
-import { app, BrowserWindow, Menu } from 'electron'
+import { app, BrowserWindow, nativeTheme } from 'electron'
 import log from 'electron-log'
+import {
+  createNote,
+  getNote,
+  mostRecentNote,
+  updateNote,
+  type NoteRecord
+} from './notes/store'
 
-interface NoteBounds {
-  x?: number
-  y?: number
-  width: number
-  height: number
-}
-
-let noteWindow: BrowserWindow | null = null
+const windows = new Map<string, BrowserWindow>()
 let noteOwner: BrowserWindow | null = null
-let latestDraft = ''
-let suppressSubmitOnClose = false
-let pinned = true
-
-const BOUNDS_FILE = (): string => path.join(app.getPath('userData'), 'note-window.json')
-
-const loadBounds = (): NoteBounds => {
-  try {
-    const raw = JSON.parse(fs.readFileSync(BOUNDS_FILE(), 'utf8')) as NoteBounds
-    if (raw && Number.isFinite(raw.width) && Number.isFinite(raw.height)) return raw
-  } catch {
-    // First run or a corrupt file: fall back to the default size.
-  }
-  return { width: 440, height: 400 }
-}
-
-const saveBounds = (win: BrowserWindow): void => {
-  try {
-    if (win.isDestroyed() || win.isMinimized()) return
-    const bounds = win.getBounds()
-    fs.writeFileSync(BOUNDS_FILE(), JSON.stringify(bounds), 'utf8')
-  } catch (error) {
-    log.warn('[note] failed to persist window bounds', error)
-  }
-}
+const drafts = new Map<string, string>()
 
 const staticRoot = (): string =>
   path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), 'static')
 
-const noteUrl = (theme: string): string => {
+const noteUrl = (id: string, theme: string): string => {
   const file = path.join(staticRoot(), 'note.html').replace(/\\/g, '/')
-  return `file://${file}?theme=${encodeURIComponent(theme)}`
+  return `file://${file}?id=${encodeURIComponent(id)}&theme=${encodeURIComponent(theme)}`
 }
 
-export const getNoteWindow = (): BrowserWindow | null => noteWindow
+export const getNoteWindows = (): BrowserWindow[] =>
+  [...windows.values()].filter((win) => !win.isDestroyed())
 
-export const setNoteDraft = (text: string): void => {
-  latestDraft = typeof text === 'string' ? text : ''
+export const getNoteWindowById = (id: string): BrowserWindow | null => {
+  const win = windows.get(id)
+  return win && !win.isDestroyed() ? win : null
 }
 
 const ownerWindow = (): BrowserWindow | null => {
@@ -74,59 +47,81 @@ const ownerWindow = (): BrowserWindow | null => {
 
 const deliver = (text: string): void => {
   const owner = ownerWindow()
-  if (!owner) return
+  if (!owner || owner.isDestroyed() || !text.trim()) return
   owner.webContents.send('mt::note::insert', text)
   owner.focus()
 }
 
-const finish = (): void => {
-  suppressSubmitOnClose = true
-  if (noteWindow && !noteWindow.isDestroyed()) {
-    saveBounds(noteWindow)
-    noteWindow.close()
+/** Insert a note's text (prefixed with its bound tag) into the document. */
+export const insertNoteIntoDocument = (id: string): void => {
+  const note = getNote(id)
+  if (!note) return
+  const draft = drafts.get(id)
+  const body = (draft ?? note.content ?? '').trim()
+  if (!body) return
+  const tag = note.tag.trim()
+  deliver(tag ? `${tag}\n${body}` : body)
+}
+
+export const setNoteDraft = (id: string, text: string): void => {
+  drafts.set(id, typeof text === 'string' ? text : '')
+  updateNote(id, { content: drafts.get(id) ?? '' })
+}
+
+export const saveNoteBounds = (id: string, win: BrowserWindow): void => {
+  if (win.isDestroyed() || win.isMinimized()) return
+  updateNote(id, { bounds: win.getBounds() })
+}
+
+export const closeNoteWindow = (id: string): void => {
+  const win = windows.get(id)
+  windows.delete(id)
+  if (win && !win.isDestroyed()) {
+    win.removeAllListeners('close')
+    win.close()
   }
-  noteWindow = null
-  noteOwner = null
-  latestDraft = ''
+  drafts.delete(id)
 }
 
-export const submitNote = (text: string): void => {
-  setNoteDraft(text)
-  const payload = latestDraft
-  deliver(payload)
-  finish()
+export const toggleNotePin = (id: string): boolean => {
+  const win = getNoteWindowById(id)
+  if (!win) return false
+  const next = !win.isAlwaysOnTop()
+  win.setAlwaysOnTop(next)
+  updateNote(id, { pinned: next })
+  return next
 }
 
-export const cancelNote = (): void => {
-  latestDraft = ''
-  finish()
+export const isNotePinned = (id: string): boolean => {
+  const win = getNoteWindowById(id)
+  return win ? win.isAlwaysOnTop() : (getNote(id)?.pinned ?? true)
 }
 
-export const openNoteWindow = (owner: BrowserWindow | null, theme = 'light'): BrowserWindow => {
+export const openNoteWindow = (
+  id: string,
+  owner: BrowserWindow | null,
+  theme = 'light'
+): BrowserWindow | null => {
+  const note = getNote(id)
+  if (!note) return null
   noteOwner = owner
 
-  if (noteWindow && !noteWindow.isDestroyed()) {
-    noteWindow.show()
-    noteWindow.focus()
-    return noteWindow
+  const existing = getNoteWindowById(id)
+  if (existing) {
+    existing.show()
+    existing.focus()
+    return existing
   }
 
-  latestDraft = ''
-  suppressSubmitOnClose = false
-  const bounds = loadBounds()
-
-  noteWindow = new BrowserWindow({
-    ...bounds,
-    minWidth: 320,
-    minHeight: 200,
-    title: '便签',
+  const win = new BrowserWindow({
+    ...(note.bounds ?? { width: 380, height: 320 }),
+    minWidth: 280,
+    minHeight: 180,
+    title: note.name,
     frame: true,
     titleBarStyle: 'hidden',
     autoHideMenuBar: true,
-    resizable: true,
-    maximizable: false,
-    fullscreenable: false,
-    alwaysOnTop: pinned,
+    alwaysOnTop: note.pinned,
     backgroundColor: theme === 'dark' ? '#1f1f1f' : '#ffffff',
     webPreferences: {
       contextIsolation: true,
@@ -136,47 +131,42 @@ export const openNoteWindow = (owner: BrowserWindow | null, theme = 'light'): Br
     }
   })
 
-  // No menu bar at all, per the design request.
-  noteWindow.setMenu(null)
-  noteWindow.setMenuBarVisibility(false)
+  win.setMenu(null)
+  win.setMenuBarVisibility(false)
+  windows.set(id, win)
 
-  noteWindow.on('close', () => {
-    if (suppressSubmitOnClose) return
-    if (latestDraft.trim()) deliver(latestDraft)
+  win.on('resize', () => saveNoteBounds(id, win))
+  win.on('move', () => saveNoteBounds(id, win))
+  win.on('closed', () => {
+    windows.delete(id)
+    drafts.delete(id)
   })
+  win.on('unresponsive', () => log.warn(`[note] window unresponsive: ${id}`))
 
-  noteWindow.on('closed', () => {
-    noteWindow = null
-    noteOwner = null
-    latestDraft = ''
-  })
-
-  noteWindow.on('resize', () => {
-    if (noteWindow) saveBounds(noteWindow)
-  })
-  noteWindow.on('move', () => {
-    if (noteWindow) saveBounds(noteWindow)
-  })
-
-  void noteWindow.loadURL(noteUrl(theme))
-  return noteWindow
+  void win.loadURL(noteUrl(id, theme))
+  return win
 }
-
-export const toggleNotePin = (): boolean => {
-  if (!noteWindow || noteWindow.isDestroyed()) return pinned
-  pinned = !noteWindow.isAlwaysOnTop()
-  noteWindow.setAlwaysOnTop(pinned)
-  return pinned
-}
-
-export const isNotePinned = (): boolean =>
-  !!noteWindow && !noteWindow.isDestroyed() ? noteWindow.isAlwaysOnTop() : pinned
 
 /**
- * Shared entry point for the menu item and the keyboard shortcut: remember the
- * caret, then open the note once focus has moved.
+ * Open a note by id, or the most recent one, or create a new note.
+ * Returns the window so the caller can focus it.
  */
-export const openNoteForWindow = (win: BrowserWindow | null, theme: string): void => {
-  if (win && !win.isDestroyed()) win.webContents.send('mt::note::prepare')
-  setTimeout(() => openNoteWindow(win, theme), 80)
+export const openOrCreateNote = (
+  owner: BrowserWindow | null,
+  theme = 'light'
+): BrowserWindow | null => {
+  if (owner && !owner.isDestroyed()) owner.webContents.send('mt::note::prepare')
+  const record: NoteRecord = mostRecentNote() ?? createNote()
+  setTimeout(() => openNoteWindow(record.id, owner, theme), 60)
+  return getNoteWindowById(record.id)
 }
+
+export const createAndOpenNote = (owner: BrowserWindow | null, theme = 'light'): BrowserWindow | null => {
+  if (owner && !owner.isDestroyed()) owner.webContents.send('mt::note::prepare')
+  const record = createNote()
+  setTimeout(() => openNoteWindow(record.id, owner, theme), 60)
+  return getNoteWindowById(record.id)
+}
+
+export const currentTheme = (): string => (nativeTheme.shouldUseDarkColors ? 'dark' : 'light')
+

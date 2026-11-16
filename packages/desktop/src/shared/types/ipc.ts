@@ -23,6 +23,7 @@ import type { MenuTemplate, MenuPopupPosition } from './menu'
 import type { PandocCommandInfo } from './pandoc'
 import type { SyncConfig, SyncStatus, SyncTestResult } from './sync'
 import type { AiAction, AiChunkEvent, AiConfig, AiDoneEvent, AiRequest } from './ai'
+import type { NoteRecord, NoteSummary } from './note'
 
 export interface SaveDialogRequest {
   title?: string
@@ -91,9 +92,13 @@ export interface IpcInvokeChannels {
   'mt::sync::run': { args: []; ret: SyncStatus }
   'mt::sync::status': { args: []; ret: SyncStatus }
   'mt::sync::choose-workspace': { args: []; ret: string | null }
-  'mt::note::open': { args: []; ret: boolean }
-  'mt::note::toggle-pin': { args: []; ret: boolean }
-  'mt::note::is-pinned': { args: []; ret: boolean }
+  'mt::note::list': { args: []; ret: NoteSummary[] }
+  'mt::note::get': { args: [id: string]; ret: NoteRecord | null }
+  'mt::note::create': { args: []; ret: NoteRecord }
+  'mt::note::open': { args: [id?: string]; ret: boolean }
+  'mt::note::create-and-open': { args: []; ret: boolean }
+  'mt::note::toggle-pin': { args: [id: string]; ret: boolean }
+  'mt::note::is-pinned': { args: [id: string]; ret: boolean }
   'mt::ai::get-config': { args: []; ret: AiConfig }
   'mt::ai::set-config': { args: [partial: Partial<AiConfig>]; ret: AiConfig }
   'mt::ai::test': { args: []; ret: { ok: boolean; message: string } }
@@ -223,11 +228,13 @@ export interface IpcSendChannels {
   'window-toggle-always-on-top': [windowId: number]
   'mt::tag::opened': []
   'mt::tag::log': [message: string]
-  'mt::note::submit': [text: string]
-  'mt::note::draft': [text: string]
+  'mt::note::submit': [id: string]
+  'mt::note::draft': [id: string, text: string]
+  'mt::note::update': [id: string, patch: Record<string, unknown>]
+  'mt::note::close': [id: string]
+  'mt::note::delete': [id: string]
   'mt::ai::start': [request: AiRequest]
   'mt::ai::abort': [requestId: string]
-  'mt::note::cancel': []
 }
 
 
@@ -362,6 +369,7 @@ export type SyncRet<K extends keyof IpcSyncChannels> = IpcSyncChannels[K]['ret']
 export type SendArgs<K extends keyof IpcSendChannels> = IpcSendChannels[K]
 
 export type EventArgs<K extends keyof IpcMainEventChannels> = IpcMainEventChannels[K]
+
 
 
 

@@ -228,7 +228,13 @@
     "aiContinue": "Continue writing",
     "aiTranslate": "Translate to English",
     "aiChat": "Open chat panel",
-    "aiAddContext": "Add to chat"
+    "aiAddContext": "Add to chat",
+    "syncTitle": "Sync",
+    "syncFeishu": "Sync to Feishu",
+    "syncGit": "Sync to Git",
+    "syncWebdav": "Sync to WebDAV",
+    "syncSettings": "Cloud sync settings…",
+    "noteNew": "New sticky note"
   },
   "search": {
     "searchPlaceholder": "Search",
@@ -803,7 +809,7 @@
     },
     "sync": {
       "title": "Cloud Sync",
-      "description": "Mirror this folder to WebDAV or Git. MarkText keeps editing local files; the sync layer copies them in the background and never overwrites a copy it did not see before.",
+      "description": "Mirror this folder to WebDAV, Git or Feishu Drive. MarkText keeps editing local files; the sync layer copies them in the background and never overwrites a copy it did not see before.",
       "basic": {
         "title": "Sync target",
         "enabled": "Enable background sync",

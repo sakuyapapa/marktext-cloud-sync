@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Main-process glue: owns the configured workspace, the watcher, the interval
  * timer and the status that the renderer shows. The actual file comparison is
  * delegated to `SyncEngine` (WebDAV) or `GitSync` (Git) so both stay testable
@@ -161,6 +161,13 @@ export class CloudSyncService {
     }
   }
 
+  /** Menu action: switch the active provider and sync immediately. */
+  async syncWith(provider: SyncConfig['provider']): Promise<SyncStatus> {
+    const config = this.store.set({ provider, enabled: true })
+    this.restartBackgroundWork(config)
+    return this.runNow(`provider:${provider}`)
+  }
+
   async start(): Promise<void> {
     const config = this.getConfig()
     this.patchStatus({ phase: config.enabled ? 'idle' : 'disabled' })
@@ -259,4 +266,5 @@ export class CloudSyncService {
 }
 
 export const cloudSyncService = new CloudSyncService()
+
 

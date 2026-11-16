@@ -228,7 +228,13 @@
     "aiContinue": "续写",
     "aiTranslate": "翻译成英文",
     "aiChat": "打开对话面板",
-    "aiAddContext": "添加到对话"
+    "aiAddContext": "添加到对话",
+    "syncTitle": "同步",
+    "syncFeishu": "同步到飞书",
+    "syncGit": "同步到 Git",
+    "syncWebdav": "同步到 WebDAV",
+    "syncSettings": "云同步设置…",
+    "noteNew": "新建便签"
   },
   "search": {
     "searchPlaceholder": "搜索",
@@ -803,7 +809,7 @@
     },
     "sync": {
       "title": "云同步",
-      "description": "把这个文件夹镜像到 WebDAV 或 Git。MarkText 仍然只编辑本地文件，同步层在后台复制；遇到双方都改过的文件不会静默覆盖。",
+      "description": "把这个文件夹镜像到 WebDAV、Git 或飞书云文档。MarkText 始终只编辑本地文件，同步层在后台复制；遇到双方都改过的文件不会静默覆盖。",
       "basic": {
         "title": "同步目标",
         "enabled": "启用后台同步",

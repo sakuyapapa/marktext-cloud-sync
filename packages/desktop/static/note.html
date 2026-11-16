@@ -50,21 +50,42 @@
         flex-direction: column;
       }
       header {
-        height: 34px;
         flex: 0 0 34px;
+        height: 34px;
         display: flex;
         align-items: center;
         gap: 6px;
-        padding: 0 8px 0 12px;
+        padding: 0 8px;
         background: var(--bar);
         border-bottom: 1px solid var(--border);
         -webkit-app-region: drag;
       }
-      header .title {
+      header input {
+        -webkit-app-region: no-drag;
+        border: 1px solid transparent;
+        background: transparent;
+        color: inherit;
+        font-family: inherit;
+        border-radius: 4px;
+        outline: none;
+        padding: 2px 4px;
+        user-select: text;
+      }
+      header input:hover,
+      header input:focus {
+        border-color: var(--border);
+        background: var(--bg);
+      }
+      #name {
         flex: 1;
+        min-width: 60px;
         font-size: 12px;
-        color: var(--muted);
-        letter-spacing: 0.5px;
+        font-weight: 600;
+      }
+      #tag {
+        width: 92px;
+        font-size: 12px;
+        color: var(--accent);
       }
       header button {
         -webkit-app-region: no-drag;
@@ -78,9 +99,7 @@
         background: transparent;
         color: var(--muted);
         font-size: 13px;
-        line-height: 1;
         cursor: pointer;
-        font-family: inherit;
         padding: 0;
       }
       header button:hover {
@@ -108,86 +127,150 @@
         color: var(--muted);
         opacity: 0.7;
       }
+      footer {
+        flex: 0 0 34px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 8px;
+        border-top: 1px solid var(--border);
+        background: var(--bar);
+      }
+      footer .hint {
+        flex: 1;
+        font-size: 11px;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      footer button {
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--fg);
+        border-radius: 5px;
+        font-size: 12px;
+        padding: 3px 10px;
+        cursor: pointer;
+        white-space: nowrap;
+        font-family: inherit;
+      }
+      footer button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
     </style>
   </head>
   <body>
     <header>
-      <span class="title">便签</span>
-      <button id="style" type="button" title="切换样式">🎨</button>
+      <input id="name" title="便签名称" />
+      <input id="tag" title="绑定标签，插入时放在正文前，例如 #会议" placeholder="#标签" />
       <button id="pin" type="button" aria-pressed="true" title="固定在最前面">📌</button>
-      <button id="close" type="button" title="插入并关闭">✕</button>
+      <button id="style" type="button" title="切换样式">🎨</button>
+      <button id="close" type="button" title="仅保存并关闭">✕</button>
     </header>
-    <textarea id="note" placeholder="随手记点什么，关闭时内容会插入到文档光标处…"></textarea>
+    <textarea id="note" placeholder="随手记点什么。点「插入」把内容送回文档，关闭只保存。"></textarea>
+    <footer>
+      <span class="hint" id="hint"></span>
+      <button id="delete" type="button" title="删除这张便签">删除</button>
+      <button id="insert" type="button" class="primary">插入到文档</button>
+    </footer>
 
     <script>
+      const params = new URLSearchParams(location.search)
+      const noteId = params.get('id') || ''
+      const theme = params.get('theme') === 'dark' ? 'dark' : 'light'
+
+      const nameInput = document.getElementById('name')
+      const tagInput = document.getElementById('tag')
       const note = document.getElementById('note')
       const pinButton = document.getElementById('pin')
       const styleButton = document.getElementById('style')
+      const hint = document.getElementById('hint')
+
       const send = (channel, ...args) => window.electron.ipcRenderer.send(channel, ...args)
 
-      const params = new URLSearchParams(location.search)
-      const theme = params.get('theme') === 'dark' ? 'dark' : 'light'
       const STYLES = ['follow', 'sticky', 'dark']
-      const STYLE_LABELS = { follow: '跟随主题', sticky: '便签纸', dark: '深色' }
-
-      const applyStyle = (style) => {
-        const resolved = style === 'follow' ? theme : style
-        document.documentElement.dataset.style = resolved
-        styleButton.title = '样式：' + STYLE_LABELS[style] + '（点击切换）'
-        localStorage.setItem('mt-note-style', style)
-      }
-
+      const LABELS = { follow: '跟随主题', sticky: '便签纸', dark: '深色' }
       let style = localStorage.getItem('mt-note-style') || 'follow'
       if (!STYLES.includes(style)) style = 'follow'
-      applyStyle(style)
-
+      const applyStyle = () => {
+        document.documentElement.dataset.style = style === 'follow' ? theme : style
+        styleButton.title = '样式：' + LABELS[style] + '（点击切换）'
+        localStorage.setItem('mt-note-style', style)
+      }
+      applyStyle()
       styleButton.addEventListener('click', () => {
         style = STYLES[(STYLES.indexOf(style) + 1) % STYLES.length]
-        applyStyle(style)
+        applyStyle()
       })
 
-      let draftTimer = null
-      note.addEventListener('input', () => {
-        clearTimeout(draftTimer)
-        draftTimer = setTimeout(() => send('mt::note::draft', note.value), 200)
-      })
+      let saveTimer = null
+      const scheduleSave = () => {
+        clearTimeout(saveTimer)
+        saveTimer = setTimeout(() => {
+          send('mt::note::draft', noteId, note.value)
+          send('mt::note::update', noteId, { name: nameInput.value, tag: tagInput.value })
+          hint.textContent = '已保存 ' + new Date().toLocaleTimeString()
+        }, 250)
+      }
+
+      note.addEventListener('input', scheduleSave)
+      nameInput.addEventListener('input', scheduleSave)
+      tagInput.addEventListener('input', scheduleSave)
 
       const submit = () => {
-        clearTimeout(draftTimer)
-        send('mt::note::submit', note.value)
+        clearTimeout(saveTimer)
+        send('mt::note::draft', noteId, note.value)
+        send('mt::note::update', noteId, { name: nameInput.value, tag: tagInput.value })
+        send('mt::note::submit', noteId)
       }
-      const cancel = () => {
-        clearTimeout(draftTimer)
-        send('mt::note::cancel')
+      const close = () => {
+        clearTimeout(saveTimer)
+        send('mt::note::draft', noteId, note.value)
+        send('mt::note::update', noteId, { name: nameInput.value, tag: tagInput.value })
+        send('mt::note::close', noteId)
       }
+      const remove = () => {
+        if (!confirm('删除这张便签？内容不会插入文档。')) return
+        send('mt::note::delete', noteId)
+      }
+
+      document.getElementById('insert').addEventListener('click', submit)
+      document.getElementById('close').addEventListener('click', close)
+      document.getElementById('delete').addEventListener('click', remove)
 
       pinButton.addEventListener('click', async () => {
-        const isPinned = await window.electron.ipcRenderer.invoke('mt::note::toggle-pin')
-        pinButton.setAttribute('aria-pressed', String(!!isPinned))
-        pinButton.title = isPinned ? '已固定在最前面' : '未固定'
+        const pinned = await window.electron.ipcRenderer.invoke('mt::note::toggle-pin', noteId)
+        pinButton.setAttribute('aria-pressed', String(!!pinned))
       })
 
-      document.getElementById('close').addEventListener('click', submit)
-
       note.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          cancel()
-        } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
           event.preventDefault()
           submit()
+        } else if (event.key === 'Escape') {
+          event.preventDefault()
+          close()
         }
       })
 
-      window.electron.ipcRenderer
-        .invoke('mt::note::is-pinned')
-        .then((isPinned) => {
-          pinButton.setAttribute('aria-pressed', String(!!isPinned))
-          pinButton.title = isPinned ? '已固定在最前面' : '未固定'
-        })
-        .catch(() => {})
-
-      note.focus()
+      const boot = async () => {
+        const record = await window.electron.ipcRenderer.invoke('mt::note::get', noteId)
+        if (!record) {
+          hint.textContent = '便签不存在'
+          return
+        }
+        nameInput.value = record.name || '便签'
+        tagInput.value = record.tag || ''
+        note.value = record.content || ''
+        document.title = record.name || '便签'
+        pinButton.setAttribute('aria-pressed', String(!!record.pinned))
+        hint.textContent = 'Ctrl+Enter 插入 · Esc 保存并关闭'
+        note.focus()
+      }
+      boot()
     </script>
   </body>
 </html>

@@ -1,8 +1,8 @@
-﻿import { BrowserWindow, nativeTheme } from 'electron'
+﻿import { BrowserWindow } from 'electron'
 import COMMAND_CONSTANTS from 'common/commands/constants'
 
 const COMMANDS = COMMAND_CONSTANTS
-import { openNoteForWindow } from '../noteWindow'
+import { openNoteShortcut } from '../contextMenu/editor/note'
 
 const targetWindow = (win?: BrowserWindow | null): BrowserWindow | null => {
   if (win && !win.isDestroyed()) return win
@@ -19,8 +19,7 @@ export const loadForkCommands = (commandManager: {
   commandManager.add(COMMANDS.MT_OPEN_NOTE, (...args: unknown[]) => {
     const win = targetWindow(args[0] as BrowserWindow | undefined)
     if (!win) return
-    const theme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
-    openNoteForWindow(win, theme)
+    openNoteShortcut(win)
   })
 
   commandManager.add(COMMANDS.MT_AI_ADD_CONTEXT, (...args: unknown[]) => {
@@ -29,5 +28,6 @@ export const loadForkCommands = (commandManager: {
     win.webContents.send('mt::ai::add-context')
   })
 }
+
 
 

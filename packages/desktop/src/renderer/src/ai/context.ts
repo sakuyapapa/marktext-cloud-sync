@@ -2,10 +2,12 @@
  * Editor helpers for the AI actions: capture the current selection together with
  * a little surrounding context, and put AI text back into the document.
  *
- * The selection is also cached continuously: clicking into the chat input moves
- * focus away from the editor (and Muya may drop the DOM selection), so the last
+ * The selection is cached continuously: clicking into the chat input moves focus
+ * away from the editor (and Muya may drop the DOM selection), so the last
  * non-empty editor selection is kept for later chips / replacement.
  */
+
+import { insertPlainText } from '@/util/insertText'
 
 export interface AiEditorContext {
   selection: string
@@ -126,39 +128,12 @@ const restore = (): boolean => {
   }
 }
 
-/**
- * Muya turns a real Enter keydown into a new paragraph; `insertText` alone drops
- * the newline characters, so multi-line results are inserted line by line with a
- * synthetic Enter between them.
- */
-const typeMultiline = (text: string): void => {
-  const lines = text.split(/\r?\n/)
-  lines.forEach((line, index) => {
-    if (line) document.execCommand('insertText', false, line)
-    if (index === lines.length - 1) return
-    const target = savedEditor ?? (document.activeElement as HTMLElement | null)
-    if (!target) return
-    for (const type of ['keydown', 'keyup'] as const) {
-      target.dispatchEvent(
-        new KeyboardEvent(type, {
-          key: 'Enter',
-          code: 'Enter',
-          keyCode: 13,
-          which: 13,
-          bubbles: true,
-          cancelable: true
-        })
-      )
-    }
-  })
-}
-
 /** Replace the captured selection with the accepted AI text. */
 export const applyAiText = (text: string): void => {
   if (!text.trim()) return
   if (!restore()) return
   try {
-    typeMultiline(text)
+    insertPlainText(text, savedEditor)
   } catch (error) {
     console.warn('[ai] failed to apply text', error)
   }
@@ -176,7 +151,7 @@ export const insertAiText = (text: string): void => {
       selection.removeAllRanges()
       selection.addRange(range)
     }
-    typeMultiline(text)
+    insertPlainText(text, savedEditor)
   } catch (error) {
     console.warn('[ai] failed to insert text', error)
   }
