@@ -58,6 +58,12 @@ export interface SyncRunOptions {
    * image and `both` is the normal two-way run.
    */
   direction?: 'both' | 'pull' | 'push'
+  /**
+   * Restrict the run to these relative paths. A trailing `/` selects a folder
+   * subtree and `*` acts as a wildcard, so `notes/*.md` works. Empty means the
+   * whole workspace.
+   */
+  paths?: string[]
 }
 
 export interface SyncEngineOptions {
@@ -73,8 +79,7 @@ export interface SyncEngineOptions {
   log?: (message: string) => void
 }
 
-const DEFAULT_IGNORES = [
-  '.git/',
+const DEFAULT_IGNORES = [  '.git/',
   'node_modules/',
   '.obsidian/',
   '.trash/',
@@ -124,8 +129,27 @@ const matchesIgnore = (relPath: string, pattern: string): boolean => {
   return relPath === pattern || relPath.endsWith(`/${pattern}`)
 }
 
-/** Conflict copies sit next to the document so the user cannot miss them. */
-export const buildConflictPath = (relPath: string, date: Date, tag: string): string => {
+/**
+ * Path filters for selective runs: an exact file, a folder (`notes/`), or a
+ * `*` wildcard (`notes/*.md`). Matching is case-sensitive like the filesystem.
+ */
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+export const matchesPathFilter = (relPath: string, filter: string): boolean => {
+  const pattern = filter.replace(/\\/g, '/').replace(/^\/+/, '').trim()
+  if (!pattern) return true
+  if (pattern.endsWith('/')) {
+    const dir = pattern.replace(/\/+$/, '')
+    return relPath === dir || relPath.startsWith(`${dir}/`)
+  }
+  if (!pattern.includes('*')) {
+    return relPath === pattern || relPath.startsWith(`${pattern}/`)
+  }
+  const regex = new RegExp(`^${pattern.split('*').map(escapeRegExp).join('.*')}$`)
+  return regex.test(relPath)
+}
+
+/** Conflict copies sit next to the document so the user cannot miss them. */export const buildConflictPath = (relPath: string, date: Date, tag: string): string => {
   const dir = path.posix.dirname(relPath)
   const ext = path.posix.extname(relPath)
   const base = path.posix.basename(relPath, ext)
@@ -268,10 +292,16 @@ export class SyncEngine {
     const direction = options.direction ?? 'both'
     const canPush = direction !== 'pull'
     const canPull = direction !== 'push'
+    const filters = (options.paths ?? []).map((entry) => entry.trim()).filter(Boolean)
+    const selective = filters.length > 0
+    const matches = (relPath: string): boolean =>
+      !selective || filters.some((filter) => matchesPathFilter(relPath, filter))
     const result: SyncRunResult = { uploaded: 0, downloaded: 0, deleted: 0, conflicts: [], errors: [] }
     const state = this.loadState()
     const local = this.scanLocal()
     const remote = await this.options.provider.list()
+    const localView = selective ? new Map([...local].filter(([relPath]) => matches(relPath))) : local
+    const remoteView = selective ? new Map([...remote].filter(([relPath]) => matches(relPath))) : remote
     const nextFiles: Record<string, SyncStateEntry> = {}
 
     const record = (relPath: string, hash: string, remoteMtimeMs: number): void => {
@@ -298,7 +328,7 @@ export class SyncEngine {
       record(relPath, hash, remote.get(relPath)?.mtimeMs ?? Date.now())
     }
 
-    for (const [relPath, info] of local) {
+    for (const [relPath, info] of localView) {
       try {
         const remoteInfo = remote.get(relPath)
         const previous = state.files[relPath]
@@ -311,6 +341,8 @@ export class SyncEngine {
           }
           if (!localChanged) {
             // Delete happened remotely while the local copy stayed untouched.
+            // Selective runs leave everything outside the filter alone.
+            if (selective) continue
             this.trashLocal(relPath)
             result.deleted += 1
             continue
@@ -380,7 +412,7 @@ export class SyncEngine {
       }
     }
 
-    for (const [relPath, remoteInfo] of remote) {
+    for (const [relPath, remoteInfo] of remoteView) {
       if (local.has(relPath)) continue
       const previous = state.files[relPath]
       try {
@@ -405,6 +437,13 @@ export class SyncEngine {
       if (nextFiles[relPath]) continue
       if (local.has(relPath) || remote.has(relPath)) {
         nextFiles[relPath] = entry
+      }
+    }
+
+    if (selective) {
+      for (const filter of filters) {
+        const found = [...remote.keys()].some((relPath) => matchesPathFilter(relPath, filter))
+        if (!found) result.errors.push(`未找到：${filter}`)
       }
     }
 

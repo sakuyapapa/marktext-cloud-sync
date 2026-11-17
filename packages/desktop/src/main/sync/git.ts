@@ -8,6 +8,7 @@ import { execFile } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import type { GitSyncConfig, GitSyncResult } from '@shared/types/sync'
+import { matchesPathFilter } from './engine'
 
 const GIT_TIMEOUT_MS = 120_000
 
@@ -49,6 +50,22 @@ const execGit = (args: string[], cwd: string): Promise<GitOutput> =>
           return
         }
         resolve({ stdout: stdout ?? '', stderr: stderr ?? '' })
+      }
+    )
+  })
+
+const execGitBuffer = (args: string[], cwd: string): Promise<Buffer> =>
+  new Promise<Buffer>((resolve, reject) => {
+    execFile(
+      'git',
+      args,
+      { cwd, timeout: GIT_TIMEOUT_MS, windowsHide: true, encoding: 'buffer', maxBuffer: 64 * 1024 * 1024 },
+      (error, stdout) => {
+        if (error) {
+          reject(new GitError(error.message, ''))
+          return
+        }
+        resolve(stdout as unknown as Buffer)
       }
     )
   })
@@ -131,8 +148,7 @@ export class GitSync {
     }
   }
 
-  async syncNow(direction: 'both' | 'pull' | 'push' = 'both'): Promise<GitSyncResult> {
-    const { workspaceDir } = this
+  async syncNow(direction: 'both' | 'pull' | 'push' = 'both'): Promise<GitSyncResult> {    const { workspaceDir } = this
     const result: GitSyncResult = {
       committed: false,
       pushed: false,
@@ -204,6 +220,61 @@ export class GitSync {
       throw new Error(`git push failed: ${detail}`)
     }
     result.pushed = true
+    return result
+  }
+
+  /**
+   * Download only the requested paths (files, folders or `*` patterns) from the
+   * remote branch. A locally modified target is copied aside first; nothing is
+   * committed or pushed.
+   */
+  async pullPaths(entries: string[]): Promise<GitSyncResult> {
+    const { workspaceDir } = this
+    const result: GitSyncResult = { committed: false, pushed: false, conflicts: [], message: '' }
+    const filters = entries.map((entry) => entry.trim()).filter(Boolean)
+    if (filters.length === 0) return this.syncNow('pull')
+
+    await this.ensureRepository()
+    await execGit(['fetch', 'origin', this.branch], workspaceDir)
+    const { stdout } = await execGit(
+      ['ls-tree', '-r', '--name-only', `origin/${this.branch}`],
+      workspaceDir
+    )
+    const remotePaths = stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+    const selected = remotePaths.filter((relPath) =>
+      filters.some((filter) => matchesPathFilter(relPath, filter))
+    )
+    const missing = filters.filter(
+      (filter) => !remotePaths.some((relPath) => matchesPathFilter(relPath, filter))
+    )
+
+    const pulled: string[] = []
+    for (const relPath of selected) {
+      const absolute = path.join(workspaceDir, relPath)
+      if (fs.existsSync(absolute)) {
+        const remoteData = await execGitBuffer(
+          ['show', `origin/${this.branch}:${relPath}`],
+          workspaceDir
+        )
+        if (!fs.readFileSync(absolute).equals(remoteData)) {
+          const backup = `${absolute}.conflict-${Date.now()}.bak`
+          fs.copyFileSync(absolute, backup)
+          result.conflicts.push(path.relative(workspaceDir, backup))
+        }
+      }
+      await execGit(['checkout', `origin/${this.branch}`, '--', relPath], workspaceDir)
+      pulled.push(relPath)
+    }
+
+    result.message = pulled.length
+      ? `Pulled ${pulled.length} file(s): ${pulled.join(', ')}`
+      : 'Nothing pulled'
+    if (missing.length) {
+      result.message += `; not found: ${missing.join(', ')}`
+    }
     return result
   }
 }

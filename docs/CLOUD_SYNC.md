@@ -132,3 +132,18 @@ MarkText 不提供任何“只拉取”的菜单或按钮。该能力只暴露�
 - 未配置云同步时会返回提示，引导去 偏好设置 → 云同步。
 
 实现：`main/ai/tools.ts`（工具定义 + 执行）+ `main/ai/client.ts`（function calling 循环，最多 3 轮）。
+
+### 选择性拉取
+
+`pull_cloud_documents` 支持 `paths` 参数：
+
+| 写法 | 含义 |
+|---|---|
+| `["某文档.md"]` | 只拉这个文件 |
+| `["notes/"]` | 拉整个子目录 |
+| `["notes/*.md"]` | 通配匹配 |
+| 省略或 `[]` | 整个工作区 |
+
+Git 后端用 `git ls-tree origin/<branch>` 展开路径后用 `checkout` 取回指定文件，因此**不会移动本地 HEAD、不会提交、不会推送**；若目标文件本地有改动，会先存成 `*.conflict-<时间>.bak` 再覆盖。WebDAV/飞书走后端 `list + download`，同样只写本地。
+
+AI 的对话里可以说“只拉 target.md”“把 notes/ 下的 md 拉下来”“拉取整个工作区”，模型会自己填 `paths`。

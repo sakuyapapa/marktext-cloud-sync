@@ -169,10 +169,10 @@ export class CloudSyncService {
   }
 
   /** Download remote changes without uploading local edits. */
-  async pullNow(reason: string = 'manual-pull'): Promise<SyncStatus> {
+  async pullNow(reason: string = 'manual-pull', paths: string[] = []): Promise<SyncStatus> {
     // Manual pull is useful even while background sync is switched off, so it
     // bypasses the `enabled` guard below.
-    return this.runNow(reason, 'pull', true)
+    return this.runNow(reason, 'pull', true, paths)
   }
 
   async start(): Promise<void> {
@@ -197,7 +197,8 @@ export class CloudSyncService {
   async runNow(
     reason: string = 'manual',
     direction: 'both' | 'pull' | 'push' = 'both',
-    force: boolean = false
+    force: boolean = false,
+    paths: string[] = []
   ): Promise<SyncStatus> {
     if (this.running) return this.running
 
@@ -211,7 +212,7 @@ export class CloudSyncService {
       return this.getStatus()
     }
 
-    this.running = this.execute(config, reason, direction)
+    this.running = this.execute(config, reason, direction, paths)
     try {
       return await this.running
     } finally {
@@ -222,7 +223,8 @@ export class CloudSyncService {
   private async execute(
     config: SyncConfig,
     reason: string,
-    direction: 'both' | 'pull' | 'push' = 'both'
+    direction: 'both' | 'pull' | 'push' = 'both',
+    paths: string[] = []
   ): Promise<SyncStatus> {
     this.patchStatus({
       phase: 'scanning',
@@ -232,8 +234,8 @@ export class CloudSyncService {
     try {
       const result =
         config.provider === 'git'
-          ? await this.runGit(config, direction)
-          : await this.runWebdav(config, direction)
+          ? await this.runGit(config, direction, paths)
+          : await this.runWebdav(config, direction, paths)
 
       const status: SyncStatus = {
         phase: 'done',
@@ -258,7 +260,8 @@ export class CloudSyncService {
 
   private async runWebdav(
     config: SyncConfig,
-    direction: 'both' | 'pull' | 'push' = 'both'
+    direction: 'both' | 'pull' | 'push' = 'both',
+    paths: string[] = []
   ): Promise<NonNullable<SyncStatus['lastResult']>> {
     const engine = new SyncEngine({
       workspaceDir: config.workspaceDir,
@@ -269,23 +272,37 @@ export class CloudSyncService {
       log: (message) => log.info(`[sync] ${message}`)
     })
     this.patchStatus({ phase: direction === 'pull' ? 'downloading' : 'uploading' })
-    const result = await engine.run({ direction })
+    const result = await engine.run({ direction, paths })
     return result
   }
 
   private async runGit(
     config: SyncConfig,
-    direction: 'both' | 'pull' | 'push' = 'both'
+    direction: 'both' | 'pull' | 'push' = 'both',
+    paths: string[] = []
   ): Promise<NonNullable<SyncStatus['lastResult']>> {
     const git = new GitSync(config.workspaceDir, config.git)
-    const result = await git.syncNow(direction)
+    const result =
+      direction === 'pull' && paths.length > 0 ? await git.pullPaths(paths) : await git.syncNow(direction)
+    const pulledMatch = /Pulled (\d+) file/.exec(result.message)
+    const downloaded =
+      direction === 'pull'
+        ? pulledMatch
+          ? Number(pulledMatch[1])
+          : result.message.includes('Pulled') || result.message.includes('pulled')
+            ? 1
+            : 0
+        : result.message.includes('Pulled')
+          ? 1
+          : 0
     this.patchStatus({ phase: direction === 'pull' ? 'downloading' : 'uploading' })
     return {
       uploaded: direction === 'pull' ? 0 : result.committed ? 1 : 0,
-      downloaded: result.message.includes('Pulled') ? 1 : 0,
+      downloaded,
       deleted: 0,
       conflicts: result.conflicts.map((entry) => ({ path: entry, backupPath: '' })),
-      errors: result.conflicts.length > 0 ? [result.message] : []
+      errors:
+        result.conflicts.length > 0 || result.message.includes('not found') ? [result.message] : []
     }
   }
 }
