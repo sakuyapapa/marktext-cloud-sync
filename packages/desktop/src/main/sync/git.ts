@@ -131,7 +131,7 @@ export class GitSync {
     }
   }
 
-  async syncNow(): Promise<GitSyncResult> {
+  async syncNow(direction: 'both' | 'pull' | 'push' = 'both'): Promise<GitSyncResult> {
     const { workspaceDir } = this
     const result: GitSyncResult = {
       committed: false,
@@ -142,18 +142,22 @@ export class GitSync {
 
     await this.ensureRepository()
 
-    await execGit(['add', '-A'], workspaceDir)
-    let staged = ''
-    try {
-      const { stdout } = await execGit(['diff', '--cached', '--name-only'], workspaceDir)
-      staged = stdout.trim()
-    } catch {
-      staged = ''
-    }
-    if (staged) {
-      const message = `docs: sync ${new Date().toISOString().slice(0, 19).replace('T', ' ')}`
-      await execGit(['commit', '-m', message], workspaceDir)
-      result.committed = true
+    // Pull-only runs must not turn local edits into a commit, otherwise the
+    // "download without uploading" promise would be broken by the push.
+    if (direction !== 'pull') {
+      await execGit(['add', '-A'], workspaceDir)
+      let staged = ''
+      try {
+        const { stdout } = await execGit(['diff', '--cached', '--name-only'], workspaceDir)
+        staged = stdout.trim()
+      } catch {
+        staged = ''
+      }
+      if (staged) {
+        const message = `docs: sync ${new Date().toISOString().slice(0, 19).replace('T', ' ')}`
+        await execGit(['commit', '-m', message], workspaceDir)
+        result.committed = true
+      }
     }
 
     try {
@@ -184,6 +188,11 @@ export class GitSync {
       }
       const detail = error instanceof GitError ? error.stderr.trim() || error.message : String(error)
       throw new Error(`git pull failed: ${detail}`)
+    }
+
+    if (direction === 'pull') {
+      result.message = 'Pulled (local changes kept)'
+      return result
     }
 
     try {

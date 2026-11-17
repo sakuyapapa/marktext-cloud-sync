@@ -17,7 +17,8 @@ export interface ChatMessage {
 const SYSTEM = [
   '你是一个嵌入在 Markdown 编辑器里的写作助手。',
   '只输出结果本身，不要解释、不要加引号、不要使用代码块包裹。',
-  '保持原文的语言；如果是 Markdown，保留其结构（标题、列表、链接等）。'
+  '保持原文的语言；如果是 Markdown，保留其结构（标题、列表、链接等）。',
+  '当用户要求获取、拉取或刷新云端文档时，调用 pull_cloud_documents 工具：它只从 MarkText 已配置的云同步连接（飞书云文档 / Git / WebDAV）下载到本地工作区，不会上传本地改动。'
 ].join('\n')
 
 const contextBlock = (request: AiRequest): string => {

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="pref-sync">
     <h4>{{ t('preferences.sync.title') }}</h4>
     <p class="notes">

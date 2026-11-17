@@ -122,3 +122,13 @@ layout-aware shortcuts degrade.
 - The Git provider requires credentials to be usable non-interactively
   (`GIT_TERMINAL_PROMPT=0` is set for every run), e.g. a stored credential
   helper or a token in the remote URL.
+
+## AI 触发的拉取（无 UI 入口）
+
+MarkText 不提供任何“只拉取”的菜单或按钮。该能力只暴露给 AI 助手：对话里说“把云端最新文档拉下来”，模型会调用 `pull_cloud_documents` 工具，主进程用当前配置的云同步连接（飞书 / Git / WebDAV）执行**只下载**：
+
+- 只写本地工作区，不上传本地改动；
+- 与本地改动冲突时按“两边都保留”落 `*.conflict-*` 副本；
+- 未配置云同步时会返回提示，引导去 偏好设置 → 云同步。
+
+实现：`main/ai/tools.ts`（工具定义 + 执行）+ `main/ai/client.ts`（function calling 循环，最多 3 轮）。

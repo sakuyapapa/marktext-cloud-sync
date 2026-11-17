@@ -168,6 +168,13 @@ export class CloudSyncService {
     return this.runNow(`provider:${provider}`)
   }
 
+  /** Download remote changes without uploading local edits. */
+  async pullNow(reason: string = 'manual-pull'): Promise<SyncStatus> {
+    // Manual pull is useful even while background sync is switched off, so it
+    // bypasses the `enabled` guard below.
+    return this.runNow(reason, 'pull', true)
+  }
+
   async start(): Promise<void> {
     const config = this.getConfig()
     this.patchStatus({ phase: config.enabled ? 'idle' : 'disabled' })
@@ -187,11 +194,15 @@ export class CloudSyncService {
   }
 
   /** Serialised: a second call joins the run already in flight. */
-  async runNow(reason: string = 'manual'): Promise<SyncStatus> {
+  async runNow(
+    reason: string = 'manual',
+    direction: 'both' | 'pull' | 'push' = 'both',
+    force: boolean = false
+  ): Promise<SyncStatus> {
     if (this.running) return this.running
 
     const config = this.getConfig()
-    if (!config.enabled) {
+    if (!config.enabled && !force) {
       this.patchStatus({ phase: 'disabled', message: '' })
       return this.getStatus()
     }
@@ -200,7 +211,7 @@ export class CloudSyncService {
       return this.getStatus()
     }
 
-    this.running = this.execute(config, reason)
+    this.running = this.execute(config, reason, direction)
     try {
       return await this.running
     } finally {
@@ -208,13 +219,21 @@ export class CloudSyncService {
     }
   }
 
-  private async execute(config: SyncConfig, reason: string): Promise<SyncStatus> {
-    this.patchStatus({ phase: 'scanning', message: `sync started (${reason})`, running: true })
+  private async execute(
+    config: SyncConfig,
+    reason: string,
+    direction: 'both' | 'pull' | 'push' = 'both'
+  ): Promise<SyncStatus> {
+    this.patchStatus({
+      phase: 'scanning',
+      message: `sync started (${reason}${direction === 'pull' ? ', pull only' : ''})`,
+      running: true
+    })
     try {
       const result =
         config.provider === 'git'
-          ? await this.runGit(config)
-          : await this.runWebdav(config)
+          ? await this.runGit(config, direction)
+          : await this.runWebdav(config, direction)
 
       const status: SyncStatus = {
         phase: 'done',
@@ -237,7 +256,10 @@ export class CloudSyncService {
     }
   }
 
-  private async runWebdav(config: SyncConfig): Promise<NonNullable<SyncStatus['lastResult']>> {
+  private async runWebdav(
+    config: SyncConfig,
+    direction: 'both' | 'pull' | 'push' = 'both'
+  ): Promise<NonNullable<SyncStatus['lastResult']>> {
     const engine = new SyncEngine({
       workspaceDir: config.workspaceDir,
       statePath: this.statePath(config.workspaceDir),
@@ -246,18 +268,21 @@ export class CloudSyncService {
       conflictPolicy: config.conflictPolicy,
       log: (message) => log.info(`[sync] ${message}`)
     })
-    this.patchStatus({ phase: 'uploading' })
-    const result = await engine.run()
+    this.patchStatus({ phase: direction === 'pull' ? 'downloading' : 'uploading' })
+    const result = await engine.run({ direction })
     return result
   }
 
-  private async runGit(config: SyncConfig): Promise<NonNullable<SyncStatus['lastResult']>> {
+  private async runGit(
+    config: SyncConfig,
+    direction: 'both' | 'pull' | 'push' = 'both'
+  ): Promise<NonNullable<SyncStatus['lastResult']>> {
     const git = new GitSync(config.workspaceDir, config.git)
-    const result = await git.syncNow()
-    this.patchStatus({ phase: 'uploading' })
+    const result = await git.syncNow(direction)
+    this.patchStatus({ phase: direction === 'pull' ? 'downloading' : 'uploading' })
     return {
-      uploaded: result.committed ? 1 : 0,
-      downloaded: result.pushed ? 1 : 0,
+      uploaded: direction === 'pull' ? 0 : result.committed ? 1 : 0,
+      downloaded: result.message.includes('Pulled') ? 1 : 0,
       deleted: 0,
       conflicts: result.conflicts.map((entry) => ({ path: entry, backupPath: '' })),
       errors: result.conflicts.length > 0 ? [result.message] : []

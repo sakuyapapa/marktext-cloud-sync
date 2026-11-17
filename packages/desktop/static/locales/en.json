@@ -234,7 +234,8 @@
     "syncGit": "Sync to Git",
     "syncWebdav": "Sync to WebDAV",
     "syncSettings": "Cloud sync settings…",
-    "noteNew": "New sticky note"
+    "noteNew": "New sticky note",
+    "syncPull": "Pull only (download)"
   },
   "search": {
     "searchPlaceholder": "Search",
@@ -847,7 +848,8 @@
       "actions": {
         "save": "Save",
         "test": "Test connection",
-        "syncNow": "Sync now"
+        "syncNow": "Sync now",
+        "pull": "Pull only"
       },
       "status": {
         "disabled": "Sync is disabled.",

@@ -51,6 +51,15 @@ export interface SyncRunResult {
   errors: string[]
 }
 
+export interface SyncRunOptions {
+  /**
+   * Direction of the run. `pull` only downloads remote changes and never
+   * uploads local edits (deletions follow the remote), `push` is the mirror
+   * image and `both` is the normal two-way run.
+   */
+  direction?: 'both' | 'pull' | 'push'
+}
+
 export interface SyncEngineOptions {
   workspaceDir: string
   statePath: string
@@ -255,7 +264,10 @@ export class SyncEngine {
     return hashBuffer(data)
   }
 
-  async run(): Promise<SyncRunResult> {
+  async run(options: SyncRunOptions = {}): Promise<SyncRunResult> {
+    const direction = options.direction ?? 'both'
+    const canPush = direction !== 'pull'
+    const canPull = direction !== 'push'
     const result: SyncRunResult = { uploaded: 0, downloaded: 0, deleted: 0, conflicts: [], errors: [] }
     const state = this.loadState()
     const local = this.scanLocal()
@@ -272,6 +284,7 @@ export class SyncEngine {
     }
 
     const push = async (relPath: string, info: LocalFileInfo): Promise<void> => {
+      if (!canPush) return
       const data = fs.readFileSync(path.join(this.options.workspaceDir, relPath))
       const remoteInfo = await this.options.provider.upload(relPath, data)
       result.uploaded += 1
@@ -279,6 +292,7 @@ export class SyncEngine {
     }
 
     const pull = async (relPath: string): Promise<void> => {
+      if (!canPull) return
       const hash = await this.pullOne(relPath)
       result.downloaded += 1
       record(relPath, hash, remote.get(relPath)?.mtimeMs ?? Date.now())
@@ -344,7 +358,7 @@ export class SyncEngine {
           record(relPath, info.hash, remoteInfo.mtimeMs)
           continue
         }
-        if (this.options.conflictPolicy === 'local-wins') {
+        if (this.options.conflictPolicy === 'local-wins' && canPush) {
           conflict(relPath, 'remote')
           await push(relPath, info)
           continue
@@ -370,12 +384,13 @@ export class SyncEngine {
       if (local.has(relPath)) continue
       const previous = state.files[relPath]
       try {
-        if (previous && remoteInfo.mtimeMs === previous.remoteMtimeMs) {
+        if (previous && remoteInfo.mtimeMs === previous.remoteMtimeMs && canPush) {
           // Deleted locally, untouched remotely -> propagate the delete.
           await this.options.provider.remove(relPath)
           result.deleted += 1
           continue
         }
+        if (!canPull) continue
         const hash = await this.pullOne(relPath)
         result.downloaded += 1
         record(relPath, hash, remoteInfo.mtimeMs)

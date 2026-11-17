@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Cross-process IPC contract: invoke returns a Promise, send is fire-and-forget,
  * sync returns directly, and main events push payloads to renderer listeners.
  */

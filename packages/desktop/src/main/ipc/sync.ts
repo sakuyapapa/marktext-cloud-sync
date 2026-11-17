@@ -1,4 +1,4 @@
-﻿import { BrowserWindow, dialog, ipcMain } from 'electron'
+import { BrowserWindow, dialog, ipcMain } from 'electron'
 import { cloudSyncService } from '../sync/service'
 import type { SyncConfig } from '@shared/types/sync'
 

@@ -234,7 +234,8 @@
     "syncGit": "同步到 Git",
     "syncWebdav": "同步到 WebDAV",
     "syncSettings": "云同步设置…",
-    "noteNew": "新建便签"
+    "noteNew": "新建便签",
+    "syncPull": "立即拉取（只下载）"
   },
   "search": {
     "searchPlaceholder": "搜索",
@@ -847,7 +848,8 @@
       "actions": {
         "save": "保存",
         "test": "测试连接",
-        "syncNow": "立即同步"
+        "syncNow": "立即同步",
+        "pull": "只拉取"
       },
       "status": {
         "disabled": "同步未启用。",
