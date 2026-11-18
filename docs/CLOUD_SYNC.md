@@ -147,3 +147,20 @@ MarkText 不提供任何“只拉取”的菜单或按钮。该能力只暴露�
 Git 后端用 `git ls-tree origin/<branch>` 展开路径后用 `checkout` 取回指定文件，因此**不会移动本地 HEAD、不会提交、不会推送**；若目标文件本地有改动，会先存成 `*.conflict-<时间>.bak` 再覆盖。WebDAV/飞书走后端 `list + download`，同样只写本地。
 
 AI 的对话里可以说“只拉 target.md”“把 notes/ 下的 md 拉下来”“拉取整个工作区”，模型会自己填 `paths`。
+
+## 飞书 / Lark 文档导入（lark-cli）
+
+不配置 App ID、不填文件夹 Token 的接入方式：AI 助手调用 `import_lark_document` 工具，主进程执行官方 `lark-cli`：
+
+```
+lark-cli docs +fetch --doc <文档或 wiki 链接> --doc-format markdown --as bot
+```
+
+- 先尝试 `bot` 身份，失败再用 `user`；
+- 输出里的 <title> 被剥离成文件名，<cite> / <whiteboard> 转成 Markdown 链接；
+- 结果写入云同步工作区，Git 后端下一次同步自动提交；
+- MarkText 不保存任何飞书凭证，凭据由 lark-cli 自己管理（`~/.lark-cli`）。
+
+查找顺序：`LARK_CLI_PATH` 环境变量 → 应用目录 `tools/lark-cli/lark-cli.exe` → 系统 PATH。
+
+> 安装：`npm i -g @larksuite/cli`；登录（如需用户身份）：`lark-cli auth login --recommend`。

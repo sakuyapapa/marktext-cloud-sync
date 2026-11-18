@@ -1,5 +1,6 @@
 import type { SyncStatus } from '@shared/types/sync'
 import { cloudSyncService } from '../sync/service'
+import { fetchLarkDocument } from '../lark/client'
 
 /**
  * Tools the assistant may call. Kept in the main process so the model never
@@ -7,6 +8,26 @@ import { cloudSyncService } from '../sync/service'
  * action, which runs with the user's configured sync credentials.
  */
 export const AI_TOOL_DEFINITIONS = [
+  {
+    type: 'function' as const,
+    function: {
+      name: 'import_lark_document',
+      description:
+        'Import a Feishu / Lark document (including wiki links like https://<tenant>.feishu.cn/wiki/<token>) as Markdown into the local sync workspace. ' +
+        'Use it whenever the user gives a Feishu or Lark document URL and asks to bring it in, read it or sync it locally. ' +
+        'It never modifies the remote document.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: {
+            type: 'string',
+            description: 'The full Feishu/Lark document or wiki URL to import.'
+          }
+        },
+        required: ['url']
+      }
+    }
+  },
   {
     type: 'function' as const,
     function: {
@@ -68,6 +89,17 @@ export const executeAiTool = async (
   name: string,
   args: Record<string, unknown> = {}
 ): Promise<string> => {
+  if (name === 'import_lark_document') {
+    const url = typeof args.url === 'string' ? args.url.trim() : ''
+    if (!url) return '缺少 url 参数：请提供飞书 / Lark 文档链接。'
+    const config = cloudSyncService.getConfig()
+    if (!config.workspaceDir) {
+      return '云同步尚未配置工作区文件夹：请先在 偏好设置 → 云同步 里选择要镜像的文件夹。'
+    }
+    const result = await fetchLarkDocument(url, config.workspaceDir)
+    return result.message
+  }
+
   if (name !== 'pull_cloud_documents') {
     return `未知工具：${name}`
   }
